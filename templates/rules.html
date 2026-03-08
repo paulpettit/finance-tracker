@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Rules — Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Rules Engine</h1>
+    <p class="dashboard-subtitle">Auto-categorize transactions as they're imported. Rules apply in priority order — first match wins.</p>
+</div>
+
+<!-- Create New Rule -->
+<div class="upload-card" style="max-width:700px;">
+    <h2>Create a Rule</h2>
+    <form method="POST">
+        <input type="hidden" name="action" value="add">
+
+        <div class="form-group">
+            <label for="name">Rule Name</label>
+            <input type="text" name="name" id="name" placeholder="e.g., Amazon purchases → Shopping" required>
+        </div>
+
+        <div class="rule-builder">
+            <div class="rule-condition">
+                <span class="rule-label">IF</span>
+                <select name="condition_field" class="search-select" style="min-width:130px;">
+                    <option value="description">Description</option>
+                    <option value="amount">Amount</option>
+                </select>
+                <select name="condition_op" class="search-select" style="min-width:130px;">
+                    <option value="contains">contains</option>
+                    <option value="equals">equals</option>
+                    <option value="greater_than">greater than</option>
+                    <option value="less_than">less than</option>
+                </select>
+                <input type="text" name="condition_value" placeholder="e.g., AMAZON" required class="search-input" style="flex:1;">
+            </div>
+
+            <div class="rule-actions">
+                <span class="rule-label">THEN</span>
+                <div class="form-group" style="margin-bottom:0;flex:1;">
+                    <label>Set category to</label>
+                    <input type="text" name="action_category" placeholder="e.g., Shopping" list="category-list">
+                    <datalist id="category-list">
+                        {% for cat in categories %}
+                        <option value="{{ cat }}">
+                        {% endfor %}
+                    </datalist>
+                </div>
+                <div class="form-group" style="margin-bottom:0;flex:1;">
+                    <label>Rename to (optional)</label>
+                    <input type="text" name="action_rename" placeholder="e.g., Amazon">
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+            <button type="submit" class="btn-primary">Create Rule</button>
+        </div>
+    </form>
+</div>
+
+<!-- Apply Rules Retroactively -->
+{% if rules %}
+<div style="margin-bottom:1.5rem;">
+    <form method="POST" style="display:inline;">
+        <input type="hidden" name="action" value="apply_all">
+        <button type="submit" class="btn-secondary">Apply All Rules to Existing Transactions</button>
+    </form>
+</div>
+{% endif %}
+
+<!-- Rules List -->
+<div class="section-header">
+    <h2>Your Rules ({{ rules|length }})</h2>
+</div>
+
+{% if rules %}
+<div class="rules-list">
+    {% for rule in rules %}
+    <div class="rule-card {{ 'rule-disabled' if not rule.enabled }}">
+        <div class="rule-card-header">
+            <div class="rule-name">{{ rule.name }}</div>
+            <div class="rule-card-actions">
+                <form method="POST" style="display:inline;">
+                    <input type="hidden" name="action" value="toggle">
+                    <input type="hidden" name="rule_id" value="{{ rule.id }}">
+                    <button type="submit" class="btn-icon" title="{{ 'Disable' if rule.enabled else 'Enable' }}">
+                        {{ '⏸️' if rule.enabled else '▶️' }}
+                    </button>
+                </form>
+                <form method="POST" style="display:inline;">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="rule_id" value="{{ rule.id }}">
+                    <button type="submit" class="btn-icon btn-danger" title="Delete">🗑️</button>
+                </form>
+            </div>
+        </div>
+        <div class="rule-logic">
+            <span class="rule-chip">IF</span>
+            <span class="rule-chip chip-field">{{ rule.condition_field }}</span>
+            <span class="rule-chip chip-op">{{ rule.condition_op.replace('_', ' ') }}</span>
+            <span class="rule-chip chip-value">"{{ rule.condition_value }}"</span>
+            <span class="rule-chip">→</span>
+            {% if rule.action_category %}
+            <span class="rule-chip chip-action">{{ rule.action_category }}</span>
+            {% endif %}
+            {% if rule.action_rename %}
+            <span class="rule-chip chip-rename">rename: {{ rule.action_rename }}</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="padding:2rem;">
+    <p class="empty-text">No rules yet. Create one above to start auto-categorizing your transactions!</p>
+    <p class="muted">Tip: If you keep manually categorizing "STARBUCKS" as "Coffee," make a rule for it.</p>
+</div>
+{% endif %}
+{% endblock %}

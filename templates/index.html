@@ -81,8 +81,13 @@
 {% endif %}
 
 <!-- Recent Activity Timeline -->
-<div class="section-header">
+<div class="section-header" style="display:flex;justify-content:space-between;align-items:center;">
     <h2>Recent Activity</h2>
+    {% if review_stats.total > 0 %}
+    <div class="review-badge">
+        <span class="review-count">{{ review_stats.unreviewed }}</span> to review
+    </div>
+    {% endif %}
 </div>
 
 <!-- Search / Filter Bar -->
@@ -102,10 +107,15 @@
 
 <div class="activity-timeline" id="activity-timeline">
     {% for t in transactions[:25] %}
-    <div class="timeline-item" data-category="{{ t.category }}" data-description="{{ t.description|lower }}">
+    <div class="timeline-item {{ 'item-reviewed' if t.reviewed }}" data-category="{{ t.category }}" data-description="{{ t.description|lower }}" data-id="{{ t.id }}">
         <div class="timeline-dot {{ 'dot-income' if t.amount > 0 else 'dot-spent' }}"></div>
         <div class="timeline-content">
             <div class="timeline-row">
+                <button class="review-check {{ 'checked' if t.reviewed }}"
+                        onclick="toggleReview({{ t.id }}, {{ 'false' if t.reviewed else 'true' }})"
+                        title="{{ 'Mark as unreviewed' if t.reviewed else 'Mark as reviewed' }}">
+                    {{ '✓' if t.reviewed else '' }}
+                </button>
                 <div class="timeline-desc">{{ t.description }}</div>
                 <div class="timeline-amount {{ 'income' if t.amount > 0 else 'spent' }}">
                     {{ '+' if t.amount > 0 else '-' }}${{ "%.2f"|format(t.amount|abs) }}
@@ -113,7 +123,7 @@
             </div>
             <div class="timeline-meta">
                 <span class="timeline-date">{{ t.date }}</span>
-                <span class="category-badge">{{ t.category }}</span>
+                <span class="category-badge category-editable" onclick="editCategory(this, {{ t.id }})" data-tid="{{ t.id }}">{{ t.category }}</span>
             </div>
         </div>
     </div>
@@ -148,6 +158,116 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+// ---- INLINE CATEGORY EDITING ----
+// Click a category badge to edit it right there
+var allCategories = {{ (transactions | map(attribute='category') | unique | sort | list) | tojson }};
+
+function editCategory(badge, tid) {
+    // Don't double-open
+    if (badge.querySelector('select')) return;
+
+    var current = badge.textContent.trim();
+    var select = document.createElement('select');
+    select.className = 'category-select-inline';
+
+    // Add existing categories as options
+    var seen = {};
+    allCategories.forEach(function(cat) {
+        if (!seen[cat]) {
+            var opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            if (cat === current) opt.selected = true;
+            select.appendChild(opt);
+            seen[cat] = true;
+        }
+    });
+
+    // Add a "custom" option
+    var customOpt = document.createElement('option');
+    customOpt.value = '__custom__';
+    customOpt.textContent = '+ New category...';
+    select.appendChild(customOpt);
+
+    badge.textContent = '';
+    badge.appendChild(select);
+    select.focus();
+
+    function saveCategory(newCat) {
+        if (!newCat || newCat === current) {
+            badge.textContent = current;
+            return;
+        }
+        fetch('/api/update-category', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id: tid, category: newCat})
+        }).then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                badge.textContent = newCat;
+                // Update the data attribute for filtering
+                var item = badge.closest('.timeline-item');
+                if (item) item.setAttribute('data-category', newCat);
+                // Add to known categories for future edits
+                if (allCategories.indexOf(newCat) === -1) allCategories.push(newCat);
+            } else {
+                badge.textContent = current;
+            }
+        });
+    }
+
+    select.addEventListener('change', function() {
+        if (select.value === '__custom__') {
+            var custom = prompt('Enter new category name:');
+            if (custom && custom.trim()) {
+                saveCategory(custom.trim());
+            } else {
+                badge.textContent = current;
+            }
+        } else {
+            saveCategory(select.value);
+        }
+    });
+
+    select.addEventListener('blur', function() {
+        // Small delay so change event fires first
+        setTimeout(function() {
+            if (badge.querySelector('select')) badge.textContent = current;
+        }, 150);
+    });
+}
+
+// ---- REVIEW TOGGLE ----
+function toggleReview(id, reviewed) {
+    fetch('/api/review', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: id, reviewed: reviewed})
+    }).then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            var item = document.querySelector('[data-id="' + id + '"]');
+            var btn = item.querySelector('.review-check');
+            if (reviewed) {
+                item.classList.add('item-reviewed');
+                btn.classList.add('checked');
+                btn.textContent = '✓';
+            } else {
+                item.classList.remove('item-reviewed');
+                btn.classList.remove('checked');
+                btn.textContent = '';
+            }
+            // Update the review count badge
+            var badge = document.querySelector('.review-count');
+            if (badge) {
+                var current = parseInt(badge.textContent);
+                badge.textContent = reviewed ? Math.max(0, current - 1) : current + 1;
+            }
+        }
+    });
+}
+
 // ---- ANIMATED NUMBER COUNTERS ----
 document.querySelectorAll('[data-count]').forEach(function(el) {
     var target = parseFloat(el.getAttribute('data-count'));

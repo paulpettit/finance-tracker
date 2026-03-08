@@ -1,13 +1,21 @@
 {% extends "base.html" %}
-
 {% block title %}Upload CSV — Finance Tracker{% endblock %}
 
 {% block content %}
 <div class="dashboard-header">
     <h1>Upload CSV</h1>
-    <p class="dashboard-subtitle">Export a CSV from your bank or brokerage and upload it here.</p>
+    <p class="dashboard-subtitle">
+        {% if step == 'preview' %}Step 2: Review transactions before importing
+        {% elif step == 'map_columns' %}Step 2: Map your CSV columns
+        {% else %}Step 1: Select your file and institution
+        {% endif %}
+    </p>
 </div>
 
+{% if step == 'upload' or step is not defined %}
+<!-- ============================================ -->
+<!-- STEP 1: Upload form                         -->
+<!-- ============================================ -->
 <div class="upload-card">
     <form method="POST" enctype="multipart/form-data" id="upload-form">
         <div class="form-group">
@@ -17,28 +25,26 @@
                 {% for parser_key in parsers %}
                 <option value="{{ parser_key }}">{{ parser_key.replace('_', ' ').title() }}</option>
                 {% endfor %}
+                <option value="generic_csv">📄 Other / Generic CSV</option>
             </select>
         </div>
 
         <div class="form-group">
             <label for="account_name">Account Name</label>
             <input type="text" name="account_name" id="account_name"
-                   placeholder="e.g., Chase Main Checking, Amex Gold"
-                   required>
+                   placeholder="e.g., Chase Main Checking, Amex Gold" required>
         </div>
 
-        <!-- Drag and Drop Zone -->
         <div class="form-group">
             <label>CSV File</label>
             <div class="dropzone" id="dropzone">
                 <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
                 <div class="dropzone-content" id="dropzone-content">
                     <div class="dropzone-icon">
-                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
                             <rect x="8" y="6" width="32" height="36" rx="4" stroke="var(--text-muted)" stroke-width="2" fill="none"/>
                             <path d="M18 24L24 18L30 24" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                             <line x1="24" y1="18" x2="24" y2="34" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
-                            <line x1="16" y1="38" x2="32" y2="38" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"/>
                         </svg>
                     </div>
                     <p class="dropzone-text">Drag & drop your CSV here</p>
@@ -52,44 +58,149 @@
             </div>
         </div>
 
-        <button type="submit" class="btn-primary btn-full" id="upload-btn">Upload & Import</button>
+        <button type="submit" class="btn-primary btn-full" id="upload-btn">Preview Import →</button>
     </form>
 </div>
 
 <div class="help-section">
     <h2>How to export CSVs</h2>
-    <details>
-        <summary>🏦 Chase</summary>
-        <p>Log into Chase.com → Select account → Click the download icon (↓) → Choose CSV → Select date range → Download</p>
-    </details>
-    <details>
-        <summary>💳 American Express</summary>
-        <p>Log into Amex → Statements & Activity → Download your statement data → Choose CSV → Select date range</p>
-    </details>
-    <details>
-        <summary>📊 Fidelity</summary>
-        <p>Log into Fidelity → Accounts → Activity & Orders → Download (top right) → CSV</p>
-    </details>
-    <details>
-        <summary>🪙 Coinbase</summary>
-        <p>Log into Coinbase → Click profile icon → Taxes → Generate Report → Transaction History CSV</p>
-    </details>
-    <details>
-        <summary>🪶 Robinhood</summary>
-        <p>Log into Robinhood → Account → Statements & History → Download account statements as CSV</p>
-    </details>
-    <details>
-        <summary>🏛️ Marcus</summary>
-        <p>Log into Marcus → Select account → Transaction History → Download Transactions → CSV</p>
-    </details>
-    <details>
-        <summary>📈 Charles Schwab</summary>
-        <p>Log into Schwab → Accounts → History → Export (top right) → CSV</p>
-    </details>
+    <details><summary>🏦 Chase</summary><p>Chase.com → Select account → Download icon (↓) → CSV → Select date range</p></details>
+    <details><summary>💳 American Express</summary><p>Amex → Statements & Activity → Download → CSV → Date range</p></details>
+    <details><summary>📊 Fidelity</summary><p>Fidelity → Accounts → Activity & Orders → Download → CSV</p></details>
+    <details><summary>🪙 Coinbase</summary><p>Coinbase → Profile → Taxes → Generate Report → Transaction History CSV</p></details>
+    <details><summary>🪶 Robinhood</summary><p>Robinhood → Account → Statements & History → Download CSV</p></details>
+    <details><summary>🏛️ Marcus</summary><p>Marcus → Account → Transaction History → Download → CSV</p></details>
+    <details><summary>📈 Charles Schwab</summary><p>Schwab → Accounts → History → Export → CSV</p></details>
 </div>
+
+{% elif step == 'preview' %}
+<!-- ============================================ -->
+<!-- STEP 2A: Preview parsed transactions         -->
+<!-- ============================================ -->
+<div class="upload-card" style="max-width:800px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div>
+            <h2>Preview: {{ filename }}</h2>
+            <p class="muted">{{ total_count }} transactions found · Showing first 15</p>
+        </div>
+        <a href="{{ url_for('upload') }}" class="btn-secondary">← Back</a>
+    </div>
+
+    <table class="transactions-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in transactions %}
+            <tr>
+                <td>{{ t.date }}</td>
+                <td>{{ t.description }}</td>
+                <td><span class="category-badge">{{ t.category }}</span></td>
+                <td class="{{ 'income' if t.amount > 0 else 'spent' }}">
+                    ${{ "%.2f"|format(t.amount|abs) }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <form method="POST" style="margin-top:1rem;">
+        <input type="hidden" name="confirm" value="1">
+        <div style="display:flex;gap:0.5rem;">
+            <button type="submit" class="btn-primary">Import {{ total_count }} Transactions</button>
+            <a href="{{ url_for('upload') }}" class="btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% elif step == 'map_columns' %}
+<!-- ============================================ -->
+<!-- STEP 2B: Column mapping for generic CSVs     -->
+<!-- ============================================ -->
+<div class="upload-card" style="max-width:800px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div>
+            <h2>Map Columns: {{ filename }}</h2>
+            <p class="muted">Tell us which columns contain the date, description, and amount.</p>
+        </div>
+        <a href="{{ url_for('upload') }}" class="btn-secondary">← Back</a>
+    </div>
+
+    <!-- Sample data preview -->
+    <div style="overflow-x:auto;margin-bottom:1.5rem;">
+        <table class="transactions-table">
+            <thead>
+                <tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr>
+            </thead>
+            <tbody>
+                {% for row in sample_rows %}
+                <tr>{% for h in headers %}<td>{{ row[h] }}</td>{% endfor %}</tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <form method="POST">
+        <input type="hidden" name="confirm" value="1">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="form-group">
+                <label>Date Column *</label>
+                <select name="col_date" required class="search-select">
+                    <option value="">Select...</option>
+                    {% for h in headers %}<option value="{{ h }}">{{ h }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Description Column *</label>
+                <select name="col_description" required class="search-select">
+                    <option value="">Select...</option>
+                    {% for h in headers %}<option value="{{ h }}">{{ h }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Amount Column *</label>
+                <select name="col_amount" required class="search-select">
+                    <option value="">Select...</option>
+                    {% for h in headers %}<option value="{{ h }}">{{ h }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Category Column (optional)</label>
+                <select name="col_category" class="search-select">
+                    <option value="">None</option>
+                    {% for h in headers %}<option value="{{ h }}">{{ h }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Account Type</label>
+                <select name="account_type" class="search-select">
+                    <option value="checking">Checking</option>
+                    <option value="credit_card">Credit Card</option>
+                    <option value="savings">Savings</option>
+                    <option value="brokerage">Brokerage</option>
+                    <option value="crypto">Crypto</option>
+                </select>
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:0.5rem;padding-top:1.5rem;">
+                <input type="checkbox" name="amount_flip" value="1" id="flip">
+                <label for="flip" style="margin:0;">Flip amount signs (purchases are positive)</label>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-primary" style="margin-top:1rem;">Import Transactions</button>
+    </form>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
+{% if step == 'upload' or step is not defined %}
 <script>
     var dropzone = document.getElementById('dropzone');
     var fileInput = document.getElementById('csv_file');
@@ -98,63 +209,21 @@
     var fileName = document.getElementById('file-name');
     var fileRemove = document.getElementById('file-remove');
 
-    function showFile(file) {
-        fileName.textContent = file.name;
-        dropContent.style.display = 'none';
-        dropFile.style.display = 'flex';
-    }
+    function showFile(file) { fileName.textContent = file.name; dropContent.style.display = 'none'; dropFile.style.display = 'flex'; }
+    function clearFile() { fileInput.value = ''; dropContent.style.display = ''; dropFile.style.display = 'none'; }
 
-    function clearFile() {
-        fileInput.value = '';
-        dropContent.style.display = '';
-        dropFile.style.display = 'none';
-    }
+    dropzone.addEventListener('click', function(e) { if (e.target !== fileRemove && e.target !== fileInput) fileInput.click(); });
+    fileInput.addEventListener('change', function() { if (fileInput.files.length) showFile(fileInput.files[0]); });
+    fileRemove.addEventListener('click', function(e) { e.stopPropagation(); clearFile(); });
 
-    // Click to browse
-    dropzone.addEventListener('click', function(e) {
-        if (e.target !== fileRemove && e.target !== fileInput) {
-            fileInput.click();
-        }
-    });
+    ['dragenter','dragover'].forEach(function(evt) { dropzone.addEventListener(evt, function(e) { e.preventDefault(); dropzone.classList.add('dropzone-active'); }); });
+    ['dragleave','drop'].forEach(function(evt) { dropzone.addEventListener(evt, function(e) { e.preventDefault(); dropzone.classList.remove('dropzone-active'); }); });
+    dropzone.addEventListener('drop', function(e) { var f = e.dataTransfer.files; if (f.length) { fileInput.files = f; showFile(f[0]); } });
 
-    fileInput.addEventListener('change', function() {
-        if (fileInput.files.length) showFile(fileInput.files[0]);
-    });
-
-    fileRemove.addEventListener('click', function(e) {
-        e.stopPropagation();
-        clearFile();
-    });
-
-    // Drag and drop
-    ['dragenter','dragover'].forEach(function(evt) {
-        dropzone.addEventListener(evt, function(e) {
-            e.preventDefault();
-            dropzone.classList.add('dropzone-active');
-        });
-    });
-
-    ['dragleave','drop'].forEach(function(evt) {
-        dropzone.addEventListener(evt, function(e) {
-            e.preventDefault();
-            dropzone.classList.remove('dropzone-active');
-        });
-    });
-
-    dropzone.addEventListener('drop', function(e) {
-        var files = e.dataTransfer.files;
-        if (files.length) {
-            fileInput.files = files;
-            showFile(files[0]);
-        }
-    });
-
-    // Upload spinner
     document.getElementById('upload-form').addEventListener('submit', function() {
         var btn = document.getElementById('upload-btn');
-        btn.disabled = true;
-        btn.textContent = 'Importing...';
-        btn.classList.add('btn-loading');
+        btn.disabled = true; btn.textContent = 'Processing...'; btn.classList.add('btn-loading');
     });
 </script>
+{% endif %}
 {% endblock %}

@@ -309,7 +309,7 @@ h2 {
    ============================== */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 1rem;
     margin-bottom: 2rem;
 }
@@ -337,9 +337,12 @@ h2 {
 }
 
 .stat-value {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--color-stat);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .stat-value.income { color: var(--color-income); }
@@ -628,14 +631,17 @@ td.spent { color: var(--color-spent); font-weight: 600; }
    ============================== */
 .charts-grid {
     display: grid;
-    grid-template-columns: 1.6fr 1fr;
+    grid-template-columns: 1.4fr 1fr;
     gap: 1rem;
     margin-bottom: 2rem;
 }
 
-.chart-wide canvas,
-.chart-narrow canvas {
+.chart-wide canvas {
     max-height: 280px;
+}
+
+.chart-narrow canvas {
+    max-height: 320px;
 }
 
 /* ==============================
@@ -945,6 +951,10 @@ td.spent { color: var(--color-spent); font-weight: 600; }
    RESPONSIVE
    ============================== */
 @media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
     .charts-grid {
         grid-template-columns: 1fr;
     }
@@ -972,4 +982,320 @@ td.spent { color: var(--color-spent); font-weight: 600; }
     .accounts-grid {
         grid-template-columns: 1fr 1fr;
     }
+}
+
+/* ==============================
+   REVIEW WORKFLOW
+   ============================== */
+.review-check {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--border-main);
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: transparent;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.review-check:hover {
+    border-color: var(--color-income);
+    color: var(--color-income);
+}
+
+.review-check.checked {
+    background: var(--color-income);
+    border-color: var(--color-income);
+    color: white;
+}
+
+.item-reviewed .timeline-content {
+    opacity: 0.6;
+}
+
+.item-reviewed .timeline-desc {
+    text-decoration: line-through;
+    text-decoration-color: var(--text-muted);
+}
+
+.review-badge {
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.review-count {
+    background: var(--accent);
+    color: var(--bg-body);
+    border-radius: 10px;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.8rem;
+    margin-right: 0.25rem;
+}
+
+/* ==============================
+   RULES ENGINE
+   ============================== */
+.rule-builder {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.rule-condition,
+.rule-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.rule-label {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--accent);
+    min-width: 45px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.rules-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+.rule-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-main);
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: var(--shadow-card);
+    transition: opacity 0.2s;
+}
+
+.rule-disabled {
+    opacity: 0.5;
+}
+
+.rule-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.rule-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.rule-card-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.rule-logic {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.rule-chip {
+    font-size: 0.78rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    background: var(--bg-body);
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.chip-field { color: var(--accent); }
+.chip-op { font-style: italic; }
+.chip-value { font-weight: 600; color: var(--text-primary); }
+.chip-action { background: var(--color-income); color: white; border-radius: 10px; }
+.chip-rename { background: var(--btn-bg); color: white; border-radius: 10px; }
+
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.btn-icon:hover { background: var(--bg-body); }
+.btn-danger:hover { background: var(--alert-error-bg); }
+
+.btn-secondary {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-main);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-secondary:hover {
+    background: var(--bg-body);
+    border-color: var(--accent);
+    color: var(--accent);
+    text-decoration: none;
+}
+
+/* ==============================
+   BUDGET PAGE
+   ============================== */
+.budget-nav {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.budget-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.budget-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-main);
+    border-radius: 10px;
+    padding: 1.25rem;
+    box-shadow: var(--shadow-card);
+    transition: border-color 0.2s;
+}
+
+.budget-over {
+    border-color: var(--color-spent);
+}
+
+.budget-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.budget-category {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.budget-amounts {
+    margin-bottom: 0.6rem;
+}
+
+.budget-spent {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.budget-of {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.budget-bar {
+    height: 8px;
+    background: var(--bg-body);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.4rem;
+}
+
+.budget-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease-out;
+}
+
+.bar-ok { background: var(--color-income); }
+.bar-warn { background: #e9c46a; }
+.bar-over { background: var(--color-spent); }
+
+.budget-remaining {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* ==============================
+   INLINE CATEGORY EDITOR
+   ============================== */
+.category-editable {
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.category-editable:hover {
+    background: var(--accent);
+    color: var(--bg-body);
+    border-color: var(--accent);
+}
+
+.category-select-inline {
+    background: var(--bg-input);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    padding: 0.1rem 0.25rem;
+    outline: none;
+    font-family: inherit;
+}
+
+/* ==============================
+   BUDGET PAGE EXTRAS
+   ============================== */
+.budget-warn {
+    border-color: #e9c46a;
+}
+
+.budget-status-icon {
+    font-size: 0.7rem;
+    margin-left: 0.25rem;
+}
+
+.budget-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.budget-avg {
+    font-style: italic;
+    opacity: 0.7;
+}
+
+.no-budget {
+    font-style: italic;
+    opacity: 0.6;
+}
+
+.suggestion-card {
+    border-style: dashed;
+    opacity: 0.85;
+}
+
+.suggestion-card:hover {
+    opacity: 1;
 }

@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% block title %}Budget — Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Budget</h1>
+    <p class="dashboard-subtitle">
+        Viewing: <strong>{{ selected_month }}</strong>
+        {% if selected_month != current_month %}
+         · <a href="{{ url_for('budget') }}">Back to current month</a>
+        {% endif %}
+    </p>
+</div>
+
+<!-- Month Navigation -->
+<div class="budget-nav">
+    {% set parts = selected_month.split('-') %}
+    {% set y = parts[0]|int %}
+    {% set m = parts[1]|int %}
+    {% set prev_m = 12 if m == 1 else m - 1 %}
+    {% set prev_y = y - 1 if m == 1 else y %}
+    {% set next_m = 1 if m == 12 else m + 1 %}
+    {% set next_y = y + 1 if m == 12 else y %}
+    <a href="{{ url_for('budget', month='%04d-%02d'|format(prev_y, prev_m)) }}" class="btn-secondary">← Previous</a>
+    <a href="{{ url_for('budget', month='%04d-%02d'|format(next_y, next_m)) }}" class="btn-secondary">Next →</a>
+</div>
+
+{% if has_budgets %}
+<!-- ============================================ -->
+<!-- SUMMARY BAR                                  -->
+<!-- ============================================ -->
+<div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom:1.5rem;">
+    <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <div class="stat-content">
+            <div class="stat-label">Total Budgeted</div>
+            <div class="stat-value">${{ "%.0f"|format(total_budgeted) }}</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">🧾</div>
+        <div class="stat-content">
+            <div class="stat-label">Total Spent</div>
+            <div class="stat-value {{ 'spent' if total_spent > total_budgeted else '' }}">${{ "%.0f"|format(total_spent) }}</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">{{ '⚠️' if total_spent > total_budgeted else '✅' }}</div>
+        <div class="stat-content">
+            <div class="stat-label">{{ 'Over Budget' if total_spent > total_budgeted else 'Remaining' }}</div>
+            <div class="stat-value {{ 'spent' if total_spent > total_budgeted else 'income' }}">${{ "%.0f"|format((total_budgeted - total_spent)|abs) }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Budget vs Actual Chart -->
+<div class="chart-container" style="margin-bottom:2rem;">
+    <h2>Budget vs Actual</h2>
+    <canvas id="budgetChart"></canvas>
+</div>
+{% endif %}
+
+<!-- ============================================ -->
+<!-- BUDGET CARDS                                 -->
+<!-- ============================================ -->
+{% if budget_data %}
+<div class="section-header">
+    <h2>Category Breakdown</h2>
+</div>
+
+<div class="budget-grid">
+    {% for b in budget_data %}
+    <div class="budget-card {{ 'budget-over' if b.over }} {{ 'budget-warn' if b.warning }}">
+        <div class="budget-card-header">
+            <div class="budget-category">
+                {{ b.category }}
+                {% if b.over %}
+                <span class="budget-status-icon" title="Over budget">🔴</span>
+                {% elif b.warning %}
+                <span class="budget-status-icon" title="Approaching limit">🟡</span>
+                {% elif b.budgeted > 0 %}
+                <span class="budget-status-icon" title="On track">🟢</span>
+                {% endif %}
+            </div>
+            {% if b.budgeted > 0 %}
+            <form method="POST" style="display:inline;">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="category" value="{{ b.category }}">
+                <button type="submit" class="btn-icon" title="Remove budget">✕</button>
+            </form>
+            {% endif %}
+        </div>
+
+        <div class="budget-amounts">
+            <span class="budget-spent {{ 'spent' if b.over else '' }}">${{ "%.2f"|format(b.spent) }}</span>
+            {% if b.budgeted > 0 %}
+            <span class="budget-of"> of ${{ "%.2f"|format(b.budgeted) }}</span>
+            {% else %}
+            <span class="budget-of no-budget">no budget set</span>
+            {% endif %}
+        </div>
+
+        {% if b.budgeted > 0 %}
+        <div class="budget-bar">
+            <div class="budget-bar-fill {{ 'bar-over' if b.over else 'bar-warn' if b.warning else 'bar-ok' }}"
+                 style="width: {{ b.percent }}%"></div>
+        </div>
+        <div class="budget-footer">
+            {% if b.over %}
+            <span class="spent">Over by ${{ "%.2f"|format(b.remaining|abs) }}</span>
+            {% else %}
+            <span>${{ "%.2f"|format(b.remaining) }} left</span>
+            {% endif %}
+            {% if b.avg > 0 %}
+            <span class="budget-avg">avg: ${{ "%.0f"|format(b.avg) }}/mo</span>
+            {% endif %}
+        </div>
+        {% elif b.avg > 0 %}
+        <div class="budget-footer">
+            <span class="budget-avg">You typically spend ~${{ "%.0f"|format(b.avg) }}/mo here</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- ============================================ -->
+<!-- SMART SUGGESTIONS                            -->
+<!-- ============================================ -->
+{% if suggestions and not has_budgets %}
+<div class="section-header">
+    <h2>Suggested Budgets</h2>
+</div>
+<p class="dashboard-subtitle" style="margin-bottom:1rem;">Based on your spending history, here are recommended starting points. You can adjust them after.</p>
+
+<form method="POST" style="margin-bottom:1.5rem;">
+    <input type="hidden" name="action" value="prefill">
+    <button type="submit" class="btn-primary">Auto-Create All Budgets From My Averages</button>
+</form>
+
+<div class="budget-grid">
+    {% for s in suggestions[:8] %}
+    <div class="budget-card suggestion-card">
+        <div class="budget-category">{{ s.category }}</div>
+        <div class="budget-amounts">
+            <span class="budget-spent">~${{ "%.0f"|format(s.avg) }}/mo avg</span>
+            <span class="budget-of">({{ s.months }} month{{ 's' if s.months != 1 }})</span>
+        </div>
+        <form method="POST" style="display:flex;gap:0.5rem;align-items:center;margin-top:0.75rem;">
+            <input type="hidden" name="action" value="set">
+            <input type="hidden" name="category" value="{{ s.category }}">
+            <input type="number" name="amount" value="{{ s.suggested }}" step="5" min="0"
+                   style="width:90px;padding:0.4rem 0.5rem;background:var(--bg-input);border:1px solid var(--border-main);border-radius:6px;color:var(--text-primary);font-size:0.9rem;">
+            <button type="submit" class="btn-secondary" style="padding:0.4rem 0.75rem;font-size:0.85rem;">Set</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+
+{% elif not budget_data %}
+<div class="empty-state" style="padding:2rem;">
+    <h2 class="empty-title">No budget data yet</h2>
+    <p class="empty-text">Upload some transactions first, then come back here. We'll suggest budgets based on your spending patterns.</p>
+    <a href="{{ url_for('upload') }}" class="btn-primary">Upload CSV</a>
+</div>
+{% endif %}
+
+<!-- ============================================ -->
+<!-- ADD/EDIT BUDGET FORM                         -->
+<!-- ============================================ -->
+{% if categories %}
+<div class="section-header" style="margin-top:2rem;">
+    <h2>{{ 'Add Another Budget' if has_budgets else 'Set a Budget Manually' }}</h2>
+</div>
+<div class="upload-card" style="max-width:500px;">
+    <form method="POST">
+        <input type="hidden" name="action" value="set">
+        <div style="display:flex;gap:0.75rem;align-items:flex-end;">
+            <div class="form-group" style="flex:1;margin-bottom:0;">
+                <label>Category</label>
+                <input type="text" name="category" placeholder="e.g., Food & Drink" required list="budget-cat-list">
+                <datalist id="budget-cat-list">
+                    {% for cat in categories %}<option value="{{ cat }}">{% endfor %}
+                </datalist>
+            </div>
+            <div class="form-group" style="width:120px;margin-bottom:0;">
+                <label>Monthly Limit</label>
+                <input type="number" name="amount" step="5" min="0" placeholder="500" required
+                       style="width:100%;padding:0.6rem 0.75rem;background:var(--bg-input);border:1px solid var(--border-main);border-radius:6px;color:var(--text-primary);font-size:0.95rem;">
+            </div>
+            <button type="submit" class="btn-primary" style="margin-bottom:0;white-space:nowrap;">Set Budget</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if has_budgets %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var textColor = isDark ? '#c4a882' : '#6b5a45';
+    var gridColor = isDark ? '#3d2e1e' : '#e0d5c5';
+
+    var labels = {{ budget_data | selectattr('budgeted') | map(attribute='category') | list | tojson }};
+    var budgeted = {{ budget_data | selectattr('budgeted') | map(attribute='budgeted') | list | tojson }};
+    var spent = {{ budget_data | selectattr('budgeted') | map(attribute='spent') | list | tojson }};
+
+    if (labels.length > 0) {
+        var ctx = document.getElementById('budgetChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Budgeted',
+                        data: budgeted,
+                        backgroundColor: isDark ? '#457b9d' : '#3a6d8c',
+                        borderRadius: 4,
+                        barPercentage: 0.7
+                    },
+                    {
+                        label: 'Spent',
+                        data: spent,
+                        backgroundColor: spent.map(function(s, i) {
+                            return s > budgeted[i] ? (isDark ? '#d1495b' : '#b53a4a') : (isDark ? '#588157' : '#3d6b42');
+                        }),
+                        borderRadius: 4,
+                        barPercentage: 0.7
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        labels: { color: textColor, usePointStyle: true, pointStyle: 'circle' }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2});
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: textColor }, grid: { display: false } },
+                    y: {
+                        ticks: {
+                            color: textColor,
+                            callback: function(v) { return '$' + v.toLocaleString(); }
+                        },
+                        grid: { color: gridColor }
+                    }
+                }
+            }
+        });
+    }
+})();
+</script>
+{% endif %}
+{% endblock %}
