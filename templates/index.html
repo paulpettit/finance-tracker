@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Finance Tracker{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<!-- Summary Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Transactions</div>
+        <div class="stat-value">{{ total_transactions }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Total Income</div>
+        <div class="stat-value income">${{ "%.2f"|format(total_income) }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Total Spent</div>
+        <div class="stat-value spent">${{ "%.2f"|format(total_spent|abs) }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Accounts</div>
+        <div class="stat-value">{{ accounts|length }}</div>
+    </div>
+</div>
+
+<!-- Chart Placeholder -->
+<!--
+    TODO (Phase 4): Add charts here!
+    You'll use Chart.js to create:
+    - A line chart for net worth over time
+    - A pie/donut chart for spending by category
+
+    The data will come from the /api/transactions endpoint.
+    See static/js/charts.js for where to add the chart code.
+-->
+<div class="chart-container">
+    <h2>Net Worth Over Time</h2>
+    <p class="placeholder-text">📊 Charts coming in Phase 4! For now, import some data using the Upload page.</p>
+</div>
+
+<!-- Recent Transactions Table -->
+<div class="transactions-section">
+    <h2>Recent Transactions</h2>
+    {% if transactions %}
+    <table class="transactions-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in transactions[:20] %}
+            <tr>
+                <td>{{ t.date }}</td>
+                <td>{{ t.description }}</td>
+                <td><span class="category-badge">{{ t.category }}</span></td>
+                <td class="{{ 'income' if t.amount > 0 else 'spent' }}">
+                    ${{ "%.2f"|format(t.amount|abs) }}
+                    {% if t.amount > 0 %}↑{% else %}↓{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if transactions|length > 20 %}
+    <p class="muted">Showing 20 of {{ transactions|length }} transactions</p>
+    {% endif %}
+    {% else %}
+    <p class="placeholder-text">No transactions yet. <a href="{{ url_for('upload') }}">Upload a CSV</a> to get started!</p>
+    {% endif %}
+</div>
+{% endblock %}

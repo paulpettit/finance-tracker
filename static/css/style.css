@@ -1,0 +1,226 @@
+/* ---- RESET & BASE ---- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f1117;
+    color: #e1e4e8;
+    line-height: 1.6;
+}
+
+a { color: #58a6ff; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---- NAVBAR ---- */
+.navbar {
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-brand {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.nav-links a {
+    margin-left: 1.5rem;
+    color: #8b949e;
+    transition: color 0.2s;
+}
+
+.nav-links a:hover {
+    color: #e1e4e8;
+    text-decoration: none;
+}
+
+/* ---- LAYOUT ---- */
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+h1 { margin-bottom: 1rem; font-size: 1.75rem; }
+h2 { margin-bottom: 0.75rem; font-size: 1.25rem; color: #c9d1d9; }
+
+/* ---- STATS CARDS ---- */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.stat-value.income { color: #3fb950; }
+.stat-value.spent { color: #f85149; }
+
+/* ---- CHART PLACEHOLDER ---- */
+.chart-container {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.placeholder-text {
+    color: #8b949e;
+    padding: 2rem;
+    text-align: center;
+}
+
+/* ---- TRANSACTIONS TABLE ---- */
+.transactions-section { margin-bottom: 2rem; }
+
+.transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.transactions-table th {
+    background: #1c2129;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-size: 0.85rem;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.transactions-table td {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #21262d;
+}
+
+.transactions-table tr:hover td {
+    background: #1c2129;
+}
+
+td.income { color: #3fb950; font-weight: 600; }
+td.spent { color: #f85149; font-weight: 600; }
+
+.category-badge {
+    background: #1f2937;
+    border: 1px solid #30363d;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: #8b949e;
+}
+
+.muted { color: #8b949e; margin-top: 0.75rem; font-size: 0.9rem; }
+
+/* ---- ALERTS / FLASH MESSAGES ---- */
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.alert-success { background: #0d3320; border: 1px solid #3fb950; color: #3fb950; }
+.alert-error { background: #3d1418; border: 1px solid #f85149; color: #f85149; }
+
+/* ---- UPLOAD FORM ---- */
+.upload-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    max-width: 500px;
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 0.9rem;
+    color: #c9d1d9;
+}
+
+.form-group select,
+.form-group input[type="text"] {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #e1e4e8;
+    font-size: 0.95rem;
+}
+
+.form-group input[type="file"] {
+    color: #8b949e;
+}
+
+.btn-primary {
+    background: #238636;
+    color: white;
+    border: none;
+    padding: 0.7rem 1.5rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-primary:hover { background: #2ea043; }
+
+/* ---- HELP SECTION ---- */
+.help-section {
+    max-width: 500px;
+}
+
+.help-section details {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+.help-section summary {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.help-section details p {
+    padding: 0 1rem 0.75rem;
+    color: #8b949e;
+    font-size: 0.9rem;
+}

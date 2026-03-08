@@ -1,0 +1,23 @@
+# Database (contains your real financial data)
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploaded CSVs (real financial data)
+uploads/
+*.csv
+!sample_data/*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

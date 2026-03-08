@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Upload CSV — Finance Tracker{% endblock %}
+
+{% block content %}
+<h1>Upload CSV</h1>
+<p>Export a CSV from your bank or brokerage and upload it here.</p>
+
+<div class="upload-card">
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="institution">Institution</label>
+            <select name="institution" id="institution" required>
+                <option value="">Select your bank/brokerage...</option>
+                {% for parser_key in parsers %}
+                <option value="{{ parser_key }}">{{ parser_key.replace('_', ' ').title() }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="account_name">Account Name</label>
+            <input type="text" name="account_name" id="account_name"
+                   placeholder="e.g., Chase Main Checking, Amex Gold"
+                   required>
+        </div>
+
+        <div class="form-group">
+            <label for="csv_file">CSV File</label>
+            <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
+        </div>
+
+        <button type="submit" class="btn-primary">Upload & Import</button>
+    </form>
+</div>
+
+<div class="help-section">
+    <h2>How to export CSVs</h2>
+    <details>
+        <summary>Chase</summary>
+        <p>Log into Chase.com → Select account → Click the download icon (↓) → Choose CSV → Select date range → Download</p>
+    </details>
+    <details>
+        <summary>American Express</summary>
+        <p>Log into Amex → Statements & Activity → Download your statement data → Choose CSV → Select date range</p>
+    </details>
+    <details>
+        <summary>Fidelity</summary>
+        <p>Log into Fidelity → Accounts → Activity & Orders → Download (top right) → CSV</p>
+    </details>
+    <!--
+        TODO: Add instructions for Coinbase, Robinhood, Marcus, Schwab
+        Hint: Log into each one and find the export/download option
+    -->
+</div>
+{% endblock %}
