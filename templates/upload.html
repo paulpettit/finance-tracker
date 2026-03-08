@@ -30,9 +30,21 @@
             <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
         </div>
 
-        <button type="submit" class="btn-primary">Upload & Import</button>
+        <button type="submit" class="btn-primary" id="upload-btn">Upload & Import</button>
     </form>
 </div>
+
+{% block scripts %}
+<script>
+    // Upload spinner — disables the button and shows feedback while importing
+    document.querySelector('form').addEventListener('submit', function() {
+        var btn = document.getElementById('upload-btn');
+        btn.disabled = true;
+        btn.textContent = 'Importing...';
+        btn.classList.add('btn-loading');
+    });
+</script>
+{% endblock %}
 
 <div class="help-section">
     <h2>How to export CSVs</h2>

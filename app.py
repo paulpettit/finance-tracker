@@ -18,7 +18,7 @@ from parsers import get_parser, PARSERS
 
 # ---- APP SETUP ----
 app = Flask(__name__)
-app.secret_key = 'change-this-to-something-random-later'  # Needed for flash messages
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-fallback-key-change-in-production')
 
 # Create an uploads folder to temporarily store CSV files
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
