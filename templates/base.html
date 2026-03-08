@@ -4,11 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Finance Tracker{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        // Apply theme BEFORE page renders to prevent flash
+        (function() {
+            var theme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
 </head>
 <body>
     <nav class="navbar">
@@ -16,9 +26,15 @@
             <img src="{{ url_for('static', filename='favicon-32x32.png') }}" alt="" class="nav-logo">
             <span>Finance Tracker</span>
         </a>
-        <div class="nav-links">
-            <a href="{{ url_for('index') }}">Dashboard</a>
-            <a href="{{ url_for('upload') }}">Upload CSV</a>
+        <div class="nav-right">
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}">Dashboard</a>
+                <a href="{{ url_for('upload') }}">Upload CSV</a>
+            </div>
+            <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">
+                <span class="theme-toggle-icon toggle-sun">☀️</span>
+                <span class="theme-toggle-icon toggle-moon">🌙</span>
+            </button>
         </div>
     </nav>
 
@@ -38,6 +54,23 @@
         <p>Built by <a href="https://github.com/paulpettit" target="_blank">paulpettit</a> &middot; <a href="https://github.com/paulpettit/finance-tracker" target="_blank">View on GitHub</a></p>
     </footer>
 
+    <script>
+        // Theme toggle — saves preference so it persists across page loads
+        (function() {
+            var toggle = document.getElementById('theme-toggle');
+            var savedTheme = localStorage.getItem('theme') || 'light';
+
+            // Apply saved theme on load
+            document.documentElement.setAttribute('data-theme', savedTheme);
+
+            toggle.addEventListener('click', function() {
+                var current = document.documentElement.getAttribute('data-theme');
+                var next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+            });
+        })();
+    </script>
     <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>

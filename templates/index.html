@@ -3,75 +3,307 @@
 {% block title %}Dashboard — Finance Tracker{% endblock %}
 
 {% block content %}
-<h1>Dashboard</h1>
+<div class="dashboard-header">
+    <h1>Dashboard</h1>
+    <p class="dashboard-subtitle">Your financial overview at a glance</p>
+</div>
 
-<!-- Summary Cards -->
+<!-- Summary Cards with animated counters -->
 <div class="stats-grid">
     <div class="stat-card">
-        <div class="stat-label">Total Transactions</div>
-        <div class="stat-value">{{ total_transactions }}</div>
+        <div class="stat-icon">📋</div>
+        <div class="stat-content">
+            <div class="stat-label">Transactions</div>
+            <div class="stat-value" data-count="{{ total_transactions }}">0</div>
+        </div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Total Income</div>
-        <div class="stat-value income">${{ "%.2f"|format(total_income) }}</div>
+        <div class="stat-icon">📈</div>
+        <div class="stat-content">
+            <div class="stat-label">Total Income</div>
+            <div class="stat-value income" data-count="{{ total_income }}" data-prefix="$">$0.00</div>
+        </div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Total Spent</div>
-        <div class="stat-value spent">${{ "%.2f"|format(total_spent|abs) }}</div>
+        <div class="stat-icon">📉</div>
+        <div class="stat-content">
+            <div class="stat-label">Total Spent</div>
+            <div class="stat-value spent" data-count="{{ total_spent|abs }}" data-prefix="$">$0.00</div>
+        </div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Accounts</div>
-        <div class="stat-value">{{ accounts|length }}</div>
+        <div class="stat-icon">🏦</div>
+        <div class="stat-content">
+            <div class="stat-label">Accounts</div>
+            <div class="stat-value" data-count="{{ accounts|length }}">0</div>
+        </div>
     </div>
 </div>
 
-<!-- Chart Placeholder -->
-<!--
-    TODO (Phase 4): Add charts here!
-    You'll use Chart.js to create:
-    - A line chart for net worth over time
-    - A pie/donut chart for spending by category
-
-    The data will come from the /api/transactions endpoint.
-    See static/js/charts.js for where to add the chart code.
--->
-<div class="chart-container">
-    <h2>Net Worth Over Time</h2>
-    <p class="placeholder-text">📊 Charts coming in Phase 4! For now, import some data using the Upload page.</p>
+{% if transactions %}
+<!-- Charts Row -->
+<div class="charts-grid">
+    <div class="chart-container chart-wide">
+        <h2>Balance Over Time</h2>
+        <canvas id="balanceChart"></canvas>
+    </div>
+    <div class="chart-container chart-narrow">
+        <h2>Spending by Category</h2>
+        <canvas id="categoryChart"></canvas>
+    </div>
 </div>
 
-<!-- Recent Transactions Table -->
-<div class="transactions-section">
-    <h2>Recent Transactions</h2>
-    {% if transactions %}
-    <table class="transactions-table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Category</th>
-                <th>Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for t in transactions[:20] %}
-            <tr>
-                <td>{{ t.date }}</td>
-                <td>{{ t.description }}</td>
-                <td><span class="category-badge">{{ t.category }}</span></td>
-                <td class="{{ 'income' if t.amount > 0 else 'spent' }}">
-                    ${{ "%.2f"|format(t.amount|abs) }}
-                    {% if t.amount > 0 %}↑{% else %}↓{% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% if transactions|length > 20 %}
-    <p class="muted">Showing 20 of {{ transactions|length }} transactions</p>
-    {% endif %}
-    {% else %}
-    <p class="placeholder-text">No transactions yet. <a href="{{ url_for('upload') }}">Upload a CSV</a> to get started!</p>
-    {% endif %}
+<!-- Account Cards -->
+{% if accounts %}
+<div class="section-header">
+    <h2>Your Accounts</h2>
 </div>
+<div class="accounts-grid">
+    {% for account in accounts %}
+    <div class="account-card">
+        <div class="account-icon">
+            {% if account.institution == 'chase' %}🏦
+            {% elif account.institution == 'amex' %}💳
+            {% elif account.institution == 'fidelity' %}📊
+            {% elif account.institution == 'coinbase' %}🪙
+            {% elif account.institution == 'robinhood' %}🪶
+            {% elif account.institution == 'marcus' %}🏛️
+            {% elif account.institution == 'schwab' %}📈
+            {% else %}💰{% endif %}
+        </div>
+        <div class="account-info">
+            <div class="account-name">{{ account.name }}</div>
+            <div class="account-type">{{ account.account_type.replace('_', ' ').title() }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Recent Activity Timeline -->
+<div class="section-header">
+    <h2>Recent Activity</h2>
+</div>
+
+<!-- Search / Filter Bar -->
+<div class="search-bar">
+    <input type="text" id="transaction-search" placeholder="Search transactions..." class="search-input">
+    <select id="category-filter" class="search-select">
+        <option value="">All Categories</option>
+        {% set categories = [] %}
+        {% for t in transactions %}
+            {% if t.category not in categories %}
+                {% if categories.append(t.category) %}{% endif %}
+                <option value="{{ t.category }}">{{ t.category }}</option>
+            {% endif %}
+        {% endfor %}
+    </select>
+</div>
+
+<div class="activity-timeline" id="activity-timeline">
+    {% for t in transactions[:25] %}
+    <div class="timeline-item" data-category="{{ t.category }}" data-description="{{ t.description|lower }}">
+        <div class="timeline-dot {{ 'dot-income' if t.amount > 0 else 'dot-spent' }}"></div>
+        <div class="timeline-content">
+            <div class="timeline-row">
+                <div class="timeline-desc">{{ t.description }}</div>
+                <div class="timeline-amount {{ 'income' if t.amount > 0 else 'spent' }}">
+                    {{ '+' if t.amount > 0 else '-' }}${{ "%.2f"|format(t.amount|abs) }}
+                </div>
+            </div>
+            <div class="timeline-meta">
+                <span class="timeline-date">{{ t.date }}</span>
+                <span class="category-badge">{{ t.category }}</span>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% if transactions|length > 25 %}
+<p class="muted" style="text-align:center;">Showing 25 of {{ transactions|length }} transactions</p>
+{% endif %}
+
+{% else %}
+<!-- Empty State -->
+<div class="empty-state">
+    <div class="empty-illustration">
+        <svg width="200" height="160" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="40" y="30" width="120" height="90" rx="8" stroke="var(--border-main)" stroke-width="2" fill="var(--bg-card)"/>
+            <line x1="60" y1="55" x2="140" y2="55" stroke="var(--border-main)" stroke-width="2"/>
+            <line x1="60" y1="70" x2="120" y2="70" stroke="var(--border-main)" stroke-width="2" opacity="0.5"/>
+            <line x1="60" y1="85" x2="130" y2="85" stroke="var(--border-main)" stroke-width="2" opacity="0.5"/>
+            <line x1="60" y1="100" x2="110" y2="100" stroke="var(--border-main)" stroke-width="2" opacity="0.3"/>
+            <circle cx="155" cy="115" r="25" fill="var(--btn-bg)" opacity="0.15"/>
+            <text x="148" y="122" font-size="24">📄</text>
+            <path d="M60 45 L75 38 L90 48 L105 35 L120 42 L135 30" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+        </svg>
+    </div>
+    <h2 class="empty-title">No data yet</h2>
+    <p class="empty-text">Upload a CSV from your bank or brokerage to start tracking your finances.</p>
+    <a href="{{ url_for('upload') }}" class="btn-primary">Upload Your First CSV</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ---- ANIMATED NUMBER COUNTERS ----
+document.querySelectorAll('[data-count]').forEach(function(el) {
+    var target = parseFloat(el.getAttribute('data-count'));
+    var prefix = el.getAttribute('data-prefix') || '';
+    var isDecimal = prefix === '$';
+    var duration = 1200;
+    var start = performance.now();
+
+    function animate(now) {
+        var elapsed = now - start;
+        var progress = Math.min(elapsed / duration, 1);
+        // Ease out cubic
+        var eased = 1 - Math.pow(1 - progress, 3);
+        var current = target * eased;
+
+        if (isDecimal) {
+            el.textContent = prefix + current.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        } else {
+            el.textContent = prefix + Math.round(current).toLocaleString();
+        }
+
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        }
+    }
+    requestAnimationFrame(animate);
+});
+
+// ---- SEARCH & FILTER ----
+var searchInput = document.getElementById('transaction-search');
+var categoryFilter = document.getElementById('category-filter');
+
+function filterTransactions() {
+    var searchTerm = (searchInput ? searchInput.value : '').toLowerCase();
+    var categoryTerm = categoryFilter ? categoryFilter.value : '';
+    var items = document.querySelectorAll('.timeline-item');
+
+    items.forEach(function(item) {
+        var desc = item.getAttribute('data-description');
+        var cat = item.getAttribute('data-category');
+        var matchSearch = !searchTerm || desc.indexOf(searchTerm) !== -1;
+        var matchCategory = !categoryTerm || cat === categoryTerm;
+        item.style.display = (matchSearch && matchCategory) ? '' : 'none';
+    });
+}
+
+if (searchInput) searchInput.addEventListener('input', filterTransactions);
+if (categoryFilter) categoryFilter.addEventListener('change', filterTransactions);
+
+// ---- CHARTS ----
+// Theme-aware colors
+function getThemeColors() {
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+        text: isDark ? '#c4a882' : '#6b5a45',
+        grid: isDark ? '#3d2e1e' : '#e0d5c5',
+        income: isDark ? '#588157' : '#3d6b42',
+        spent: isDark ? '#d1495b' : '#b53a4a',
+        // Donut chart colors pulled from abacus beads
+        donut: ['#d1495b','#457b9d','#588157','#e9c46a','#e76f51','#c4956a','#8b6914','#a08c72']
+    };
+}
+
+{% if transactions %}
+// Balance Over Time Chart
+fetch('/api/monthly-summary')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.length) return;
+        var colors = getThemeColors();
+        var ctx = document.getElementById('balanceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(function(d) { return d.month; }),
+                datasets: [{
+                    label: 'Cumulative Balance',
+                    data: data.map(function(d) { return d.balance; }),
+                    borderColor: colors.income,
+                    backgroundColor: colors.income + '20',
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return '$' + ctx.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2});
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: {
+                        ticks: {
+                            color: colors.text,
+                            callback: function(v) { return '$' + v.toLocaleString(); }
+                        },
+                        grid: { color: colors.grid }
+                    }
+                }
+            }
+        });
+    });
+
+// Spending by Category Donut
+fetch('/api/spending-by-category')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.labels.length) return;
+        var colors = getThemeColors();
+        var ctx = document.getElementById('categoryChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    data: data.values,
+                    backgroundColor: colors.donut.slice(0, data.labels.length),
+                    borderWidth: 2,
+                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-card').trim()
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '60%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: colors.text,
+                            padding: 12,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                var total = ctx.dataset.data.reduce(function(a,b) { return a+b; }, 0);
+                                var pct = ((ctx.parsed / total) * 100).toFixed(1);
+                                return ctx.label + ': $' + ctx.parsed.toLocaleString('en-US', {minimumFractionDigits:2}) + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+{% endif %}
+</script>
 {% endblock %}

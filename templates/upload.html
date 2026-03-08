@@ -3,11 +3,13 @@
 {% block title %}Upload CSV — Finance Tracker{% endblock %}
 
 {% block content %}
-<h1>Upload CSV</h1>
-<p>Export a CSV from your bank or brokerage and upload it here.</p>
+<div class="dashboard-header">
+    <h1>Upload CSV</h1>
+    <p class="dashboard-subtitle">Export a CSV from your bank or brokerage and upload it here.</p>
+</div>
 
 <div class="upload-card">
-    <form method="POST" enctype="multipart/form-data">
+    <form method="POST" enctype="multipart/form-data" id="upload-form">
         <div class="form-group">
             <label for="institution">Institution</label>
             <select name="institution" id="institution" required>
@@ -25,44 +27,134 @@
                    required>
         </div>
 
+        <!-- Drag and Drop Zone -->
         <div class="form-group">
-            <label for="csv_file">CSV File</label>
-            <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
+            <label>CSV File</label>
+            <div class="dropzone" id="dropzone">
+                <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
+                <div class="dropzone-content" id="dropzone-content">
+                    <div class="dropzone-icon">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="8" y="6" width="32" height="36" rx="4" stroke="var(--text-muted)" stroke-width="2" fill="none"/>
+                            <path d="M18 24L24 18L30 24" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <line x1="24" y1="18" x2="24" y2="34" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
+                            <line x1="16" y1="38" x2="32" y2="38" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <p class="dropzone-text">Drag & drop your CSV here</p>
+                    <p class="dropzone-hint">or click to browse</p>
+                </div>
+                <div class="dropzone-file" id="dropzone-file" style="display:none;">
+                    <span class="file-icon">📄</span>
+                    <span class="file-name" id="file-name"></span>
+                    <button type="button" class="file-remove" id="file-remove">✕</button>
+                </div>
+            </div>
         </div>
 
-        <button type="submit" class="btn-primary" id="upload-btn">Upload & Import</button>
+        <button type="submit" class="btn-primary btn-full" id="upload-btn">Upload & Import</button>
     </form>
 </div>
 
+<div class="help-section">
+    <h2>How to export CSVs</h2>
+    <details>
+        <summary>🏦 Chase</summary>
+        <p>Log into Chase.com → Select account → Click the download icon (↓) → Choose CSV → Select date range → Download</p>
+    </details>
+    <details>
+        <summary>💳 American Express</summary>
+        <p>Log into Amex → Statements & Activity → Download your statement data → Choose CSV → Select date range</p>
+    </details>
+    <details>
+        <summary>📊 Fidelity</summary>
+        <p>Log into Fidelity → Accounts → Activity & Orders → Download (top right) → CSV</p>
+    </details>
+    <details>
+        <summary>🪙 Coinbase</summary>
+        <p>Log into Coinbase → Click profile icon → Taxes → Generate Report → Transaction History CSV</p>
+    </details>
+    <details>
+        <summary>🪶 Robinhood</summary>
+        <p>Log into Robinhood → Account → Statements & History → Download account statements as CSV</p>
+    </details>
+    <details>
+        <summary>🏛️ Marcus</summary>
+        <p>Log into Marcus → Select account → Transaction History → Download Transactions → CSV</p>
+    </details>
+    <details>
+        <summary>📈 Charles Schwab</summary>
+        <p>Log into Schwab → Accounts → History → Export (top right) → CSV</p>
+    </details>
+</div>
+{% endblock %}
+
 {% block scripts %}
 <script>
-    // Upload spinner — disables the button and shows feedback while importing
-    document.querySelector('form').addEventListener('submit', function() {
+    var dropzone = document.getElementById('dropzone');
+    var fileInput = document.getElementById('csv_file');
+    var dropContent = document.getElementById('dropzone-content');
+    var dropFile = document.getElementById('dropzone-file');
+    var fileName = document.getElementById('file-name');
+    var fileRemove = document.getElementById('file-remove');
+
+    function showFile(file) {
+        fileName.textContent = file.name;
+        dropContent.style.display = 'none';
+        dropFile.style.display = 'flex';
+    }
+
+    function clearFile() {
+        fileInput.value = '';
+        dropContent.style.display = '';
+        dropFile.style.display = 'none';
+    }
+
+    // Click to browse
+    dropzone.addEventListener('click', function(e) {
+        if (e.target !== fileRemove && e.target !== fileInput) {
+            fileInput.click();
+        }
+    });
+
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files.length) showFile(fileInput.files[0]);
+    });
+
+    fileRemove.addEventListener('click', function(e) {
+        e.stopPropagation();
+        clearFile();
+    });
+
+    // Drag and drop
+    ['dragenter','dragover'].forEach(function(evt) {
+        dropzone.addEventListener(evt, function(e) {
+            e.preventDefault();
+            dropzone.classList.add('dropzone-active');
+        });
+    });
+
+    ['dragleave','drop'].forEach(function(evt) {
+        dropzone.addEventListener(evt, function(e) {
+            e.preventDefault();
+            dropzone.classList.remove('dropzone-active');
+        });
+    });
+
+    dropzone.addEventListener('drop', function(e) {
+        var files = e.dataTransfer.files;
+        if (files.length) {
+            fileInput.files = files;
+            showFile(files[0]);
+        }
+    });
+
+    // Upload spinner
+    document.getElementById('upload-form').addEventListener('submit', function() {
         var btn = document.getElementById('upload-btn');
         btn.disabled = true;
         btn.textContent = 'Importing...';
         btn.classList.add('btn-loading');
     });
 </script>
-{% endblock %}
-
-<div class="help-section">
-    <h2>How to export CSVs</h2>
-    <details>
-        <summary>Chase</summary>
-        <p>Log into Chase.com → Select account → Click the download icon (↓) → Choose CSV → Select date range → Download</p>
-    </details>
-    <details>
-        <summary>American Express</summary>
-        <p>Log into Amex → Statements & Activity → Download your statement data → Choose CSV → Select date range</p>
-    </details>
-    <details>
-        <summary>Fidelity</summary>
-        <p>Log into Fidelity → Accounts → Activity & Orders → Download (top right) → CSV</p>
-    </details>
-    <!--
-        TODO: Add instructions for Coinbase, Robinhood, Marcus, Schwab
-        Hint: Log into each one and find the export/download option
-    -->
-</div>
 {% endblock %}

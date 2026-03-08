@@ -113,17 +113,66 @@ def upload():
 
 @app.route('/api/transactions')
 def api_transactions():
-    """
-    API endpoint that returns transactions as JSON.
-    This is used by the JavaScript charts on the dashboard.
+    """API endpoint that returns transactions as JSON."""
+    transactions = get_all_transactions()
+    return jsonify([dict(t) for t in transactions])
 
-    YOUR TASK (Phase 4): Add more API endpoints for:
-    - /api/spending-by-category — grouped spending data for pie chart
-    - /api/net-worth-over-time — balance data for line chart
+
+@app.route('/api/spending-by-category')
+def api_spending_by_category():
+    """
+    Returns spending grouped by category for the donut chart.
+    Only includes negative amounts (money spent).
     """
     transactions = get_all_transactions()
-    # Convert Row objects to regular dicts for JSON serialization
-    return jsonify([dict(t) for t in transactions])
+    categories = {}
+    for t in transactions:
+        if t['amount'] < 0:
+            cat = t['category'] or 'Uncategorized'
+            categories[cat] = categories.get(cat, 0) + abs(t['amount'])
+
+    # Sort by amount descending
+    sorted_cats = sorted(categories.items(), key=lambda x: x[1], reverse=True)
+    return jsonify({
+        'labels': [c[0] for c in sorted_cats],
+        'values': [round(c[1], 2) for c in sorted_cats]
+    })
+
+
+@app.route('/api/monthly-summary')
+def api_monthly_summary():
+    """
+    Returns monthly income and spending totals for the net worth line chart.
+    Tracks cumulative balance over time.
+    """
+    transactions = get_all_transactions()
+
+    # Group by month
+    months = {}
+    for t in transactions:
+        # Extract YYYY-MM from the date
+        month_key = t['date'][:7]  # e.g., "2024-01"
+        if month_key not in months:
+            months[month_key] = {'income': 0, 'spent': 0}
+        if t['amount'] > 0:
+            months[month_key]['income'] += t['amount']
+        else:
+            months[month_key]['spent'] += abs(t['amount'])
+
+    # Sort by month and calculate cumulative balance
+    sorted_months = sorted(months.items())
+    cumulative = 0
+    result = []
+    for month, data in sorted_months:
+        cumulative += data['income'] - data['spent']
+        result.append({
+            'month': month,
+            'income': round(data['income'], 2),
+            'spent': round(data['spent'], 2),
+            'balance': round(cumulative, 2)
+        })
+
+    return jsonify(result)
 
 
 # ---- START THE APP ----
