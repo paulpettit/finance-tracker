@@ -111,7 +111,7 @@ td.spent,
 .navbar {
     background: var(--bg-nav);
     border-bottom: var(--border-width) solid var(--border-main);
-    padding: var(--nav-padding-y) 4%;
+    padding: var(--nav-padding-y) clamp(1.5rem, 3vw, 3rem);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -478,10 +478,10 @@ td.spent,
    LAYOUT
    ============================== */
 .container {
-    width: 92%;
-    max-width: var(--container-max);
-    margin: 0 auto;
-    padding: var(--space-lg) 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: var(--space-md) clamp(1.5rem, 3vw, 3rem);
     flex: 1;
     position: relative;
     z-index: 2;
