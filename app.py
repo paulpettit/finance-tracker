@@ -536,6 +536,6 @@ def api_monthly_summary():
 # ---- START THE APP ----
 if __name__ == '__main__':
     initialize_database()
-    print("\n🚀 Finance Tracker is running!")
+    print("\nFinance Tracker is running!")
     print("   Open http://localhost:5000 in your browser\n")
     app.run(debug=True, port=5000)
