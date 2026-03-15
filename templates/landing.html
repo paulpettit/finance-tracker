@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Tracker — Take control of your money</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.29.0/dist/tabler-icons.min.css">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+</head>
+<body>
+
+    <!-- ── Navbar ────────────────────────────────────────── -->
+    <nav class="land-nav">
+        <div class="land-nav-inner">
+            <a href="{{ url_for('index') }}" class="land-brand">
+                <img src="{{ url_for('static', filename='favicon-32x32.png') }}" alt="" class="land-logo">
+                <span>Finance Tracker</span>
+            </a>
+            <a href="{{ url_for('dashboard') }}" class="land-cta-btn">
+                <i class="ti ti-layout-dashboard"></i>
+                Open Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <!-- ── Hero ──────────────────────────────────────────── -->
+    <section class="land-hero">
+        <div class="land-hero-inner">
+            <div class="land-hero-text">
+                <div class="land-badge">
+                    <i class="ti ti-sparkles"></i>
+                    Personal Finance, Simplified
+                </div>
+                <h1 class="land-headline">
+                    Take control of<br>your money
+                </h1>
+                <p class="land-sub">
+                    Import your transactions, track spending, set budgets, and understand where your money goes — all in one private, local app.
+                </p>
+                <div class="land-hero-actions">
+                    <a href="{{ url_for('dashboard') }}" class="land-btn-primary">
+                        <i class="ti ti-layout-dashboard"></i>
+                        Go to Dashboard
+                    </a>
+                    <a href="{{ url_for('upload') }}" class="land-btn-secondary">
+                        <i class="ti ti-upload"></i>
+                        Upload CSV
+                    </a>
+                </div>
+            </div>
+            <div class="land-hero-img">
+                <img src="{{ url_for('static', filename='img/undraw_goals_dwgr.svg') }}"
+                     alt="Set and achieve your financial goals"
+                     loading="eager">
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Features ──────────────────────────────────────── -->
+    <section class="land-features">
+        <div class="land-container">
+            <h2 class="land-section-title">Everything you need</h2>
+            <p class="land-section-sub">A complete toolkit for personal finance management</p>
+
+            <div class="land-features-grid">
+                <div class="land-feature-card">
+                    <div class="land-feature-img">
+                        <img src="{{ url_for('static', filename='img/undraw_investor-update_ou4c.svg') }}"
+                             alt="Smart dashboard overview">
+                    </div>
+                    <div class="land-feature-icon"><i class="ti ti-layout-dashboard"></i></div>
+                    <h3>Smart Dashboard</h3>
+                    <p>Customizable widgets, interactive charts, and a complete transaction timeline — all arranged just the way you like it.</p>
+                </div>
+
+                <div class="land-feature-card">
+                    <div class="land-feature-img">
+                        <img src="{{ url_for('static', filename='img/undraw_project-completed_ug9i.svg') }}"
+                             alt="Budget tracking">
+                    </div>
+                    <div class="land-feature-icon"><i class="ti ti-target"></i></div>
+                    <h3>Budget Tracking</h3>
+                    <p>Set monthly budgets per category, track progress with visual bars, and get smart suggestions based on your history.</p>
+                </div>
+
+                <div class="land-feature-card">
+                    <div class="land-feature-img">
+                        <img src="{{ url_for('static', filename='img/undraw_successful-upload_t9fz.svg') }}"
+                             alt="Easy CSV import">
+                    </div>
+                    <div class="land-feature-icon"><i class="ti ti-file-spreadsheet"></i></div>
+                    <h3>Easy CSV Import</h3>
+                    <p>Import from any bank. Built-in parsers for major institutions plus a flexible column-mapping wizard for everything else.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── How It Works ──────────────────────────────────── -->
+    <section class="land-steps">
+        <div class="land-container">
+            <h2 class="land-section-title">Get started in minutes</h2>
+            <p class="land-section-sub">Three steps from zero to full financial clarity</p>
+
+            <div class="land-steps-list">
+                <div class="land-step">
+                    <div class="land-step-num">1</div>
+                    <div class="land-step-content">
+                        <h4>Upload your CSV</h4>
+                        <p>Export transactions from your bank and import with one click.</p>
+                    </div>
+                </div>
+                <div class="land-step-connector"></div>
+                <div class="land-step">
+                    <div class="land-step-num">2</div>
+                    <div class="land-step-content">
+                        <h4>Set up rules</h4>
+                        <p>Auto-categorize transactions with powerful pattern matching rules.</p>
+                    </div>
+                </div>
+                <div class="land-step-connector"></div>
+                <div class="land-step">
+                    <div class="land-step-num">3</div>
+                    <div class="land-step-content">
+                        <h4>Track &amp; budget</h4>
+                        <p>See where your money goes and set limits that make sense for you.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="land-step-img">
+                <img src="{{ url_for('static', filename='img/undraw_business-decisions_7vkl.svg') }}"
+                     alt="Make informed financial decisions">
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Extras Pills ───────────────────────────────────── -->
+    <section class="land-extras">
+        <div class="land-container">
+            <div class="land-extras-grid">
+                <div class="land-extra">
+                    <i class="ti ti-palette"></i>
+                    <div>
+                        <h4>11 themes</h4>
+                        <p>From warm earthy tones to Bloomberg terminal mode. Switch anytime.</p>
+                    </div>
+                </div>
+                <div class="land-extra">
+                    <i class="ti ti-device-desktop-off"></i>
+                    <div>
+                        <h4>Runs locally</h4>
+                        <p>Your data never leaves your machine. 100% private, no cloud required.</p>
+                    </div>
+                </div>
+                <div class="land-extra">
+                    <i class="ti ti-chart-bar"></i>
+                    <div>
+                        <h4>Powerful charts</h4>
+                        <p>Monthly trends, spending by category, and net worth over time.</p>
+                    </div>
+                </div>
+                <div class="land-extra">
+                    <i class="ti ti-layout-grid-add"></i>
+                    <div>
+                        <h4>Drag &amp; drop layout</h4>
+                        <p>Customize your dashboard with draggable, re-orderable widgets.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Final CTA ─────────────────────────────────────── -->
+    <section class="land-final-cta">
+        <div class="land-container">
+            <img src="{{ url_for('static', filename='img/undraw_device-sync_d9ei.svg') }}"
+                 alt="" class="land-cta-img" aria-hidden="true">
+            <h2>Ready to get started?</h2>
+            <p>Open the dashboard and import your first CSV to get going — no account needed.</p>
+            <div class="land-cta-actions">
+                <a href="{{ url_for('dashboard') }}" class="land-btn-primary large">
+                    <i class="ti ti-arrow-right"></i>
+                    Open Dashboard
+                </a>
+                <a href="{{ url_for('upload') }}" class="land-btn-outline large">
+                    <i class="ti ti-upload"></i>
+                    Upload CSV
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Footer ────────────────────────────────────────── -->
+    <footer class="land-footer">
+        <div class="land-container">
+            <p>Finance Tracker &middot; Private, open-source, built with Flask &amp; Python.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

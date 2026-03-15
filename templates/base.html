@@ -6,16 +6,17 @@
     <title>{% block title %}Finance Tracker{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Serif+Display&family=DM+Mono:wght@300;400;500&family=Fraunces:opsz,wght,SOFT,WONK@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700;9..144,300,50,1;9..144,600,50,1&family=Inter:opsz,wght@14..32,300;14..32,400;14..32,450;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,500;8..60,600;8..60,700&family=Instrument+Serif&family=Playfair+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.29.0/dist/tabler-icons.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/themes.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script>
-        // Apply theme BEFORE page renders to prevent flash
         (function() {
-            var theme = localStorage.getItem('theme') || 'light';
+            var theme = localStorage.getItem('theme') || 'abacus-light';
             document.documentElement.setAttribute('data-theme', theme);
         })();
     </script>
@@ -28,15 +29,31 @@
         </a>
         <div class="nav-right">
             <div class="nav-links">
-                <a href="{{ url_for('index') }}">Dashboard</a>
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
                 <a href="{{ url_for('budget') }}">Budget</a>
                 <a href="{{ url_for('rules') }}">Rules</a>
                 <a href="{{ url_for('upload') }}">Upload</a>
             </div>
-            <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">
-                <span class="theme-toggle-icon toggle-sun">☀️</span>
-                <span class="theme-toggle-icon toggle-moon">🌙</span>
-            </button>
+            <div class="theme-picker-wrap">
+                <button class="theme-picker-btn" id="theme-picker-btn" title="Change theme">
+                    <span id="theme-icon">🎨</span>
+                    <span id="theme-name-label">Theme</span>
+                </button>
+                <div class="theme-dropdown" id="theme-dropdown">
+                    <div class="theme-dropdown-title">Choose a theme</div>
+                    <button class="theme-option" data-theme="abacus-light"><span class="theme-swatch" style="background:#f5f4ff;border-color:#6c63ff;"></span>Abacus Light</button>
+                    <button class="theme-option" data-theme="abacus-dark"><span class="theme-swatch" style="background:#1a1510;border-color:#e9c46a;"></span>Abacus Dark</button>
+                    <button class="theme-option" data-theme="mercury"><span class="theme-swatch" style="background:#f8f9fb;border-color:#1558bc;"></span>Mercury</button>
+                    <button class="theme-option" data-theme="stripe"><span class="theme-swatch" style="background:#0a2540;border-color:#635bff;"></span>Stripe</button>
+                    <button class="theme-option" data-theme="apple"><span class="theme-swatch" style="background:#f5f5f7;border-color:#0071e3;"></span>Apple</button>
+                    <button class="theme-option" data-theme="notion"><span class="theme-swatch" style="background:#ffffff;border-color:#37352f;"></span>Notion</button>
+                    <button class="theme-option" data-theme="linear"><span class="theme-swatch" style="background:#101012;border-color:#7c5cff;"></span>Linear</button>
+                    <button class="theme-option" data-theme="bloomberg"><span class="theme-swatch" style="background:#000000;border-color:#ff9933;"></span>Bloomberg</button>
+                    <button class="theme-option" data-theme="amex-platinum"><span class="theme-swatch" style="background:#0c0c10;border-color:#c9a96e;"></span>Amex Platinum</button>
+                    <button class="theme-option" data-theme="radix-light"><span class="theme-swatch" style="background:#f9f9fb;border-color:#3e63dd;"></span>Radix Light</button>
+                    <button class="theme-option" data-theme="radix-dark"><span class="theme-swatch" style="background:#111113;border-color:#849dff;"></span>Radix Dark</button>
+                </div>
+            </div>
         </div>
     </nav>
 
@@ -57,23 +74,54 @@
     </footer>
 
     <script>
-        // Theme toggle — saves preference so it persists across page loads
+        // Theme picker
         (function() {
-            var toggle = document.getElementById('theme-toggle');
-            var savedTheme = localStorage.getItem('theme') || 'light';
+            var btn = document.getElementById('theme-picker-btn');
+            var dropdown = document.getElementById('theme-dropdown');
+            var options = document.querySelectorAll('.theme-option');
+            var label = document.getElementById('theme-name-label');
 
-            // Apply saved theme on load
-            document.documentElement.setAttribute('data-theme', savedTheme);
+            var themeNames = {
+                'abacus-light': 'Abacus Light', 'abacus-dark': 'Abacus Dark',
+                'mercury': 'Mercury', 'stripe': 'Stripe', 'apple': 'Apple',
+                'notion': 'Notion', 'linear': 'Linear',
+                'bloomberg': 'Bloomberg', 'amex-platinum': 'Amex Platinum',
+                'radix-light': 'Radix Light', 'radix-dark': 'Radix Dark'
+            };
 
-            toggle.addEventListener('click', function() {
-                var current = document.documentElement.getAttribute('data-theme');
-                var next = current === 'dark' ? 'light' : 'dark';
-                document.documentElement.setAttribute('data-theme', next);
-                localStorage.setItem('theme', next);
+            var current = localStorage.getItem('theme') || 'abacus-light';
+            label.textContent = themeNames[current] || 'Theme';
+
+            // Mark active
+            options.forEach(function(opt) {
+                if (opt.getAttribute('data-theme') === current) opt.classList.add('active');
+            });
+
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                dropdown.classList.toggle('open');
+            });
+
+            options.forEach(function(opt) {
+                opt.addEventListener('click', function() {
+                    var theme = opt.getAttribute('data-theme');
+                    document.documentElement.setAttribute('data-theme', theme);
+                    localStorage.setItem('theme', theme);
+                    label.textContent = themeNames[theme] || theme;
+                    // Update active state
+                    options.forEach(function(o) { o.classList.remove('active'); });
+                    opt.classList.add('active');
+                    dropdown.classList.remove('open');
+                });
+            });
+
+            document.addEventListener('click', function() {
+                dropdown.classList.remove('open');
             });
         })();
     </script>
     <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

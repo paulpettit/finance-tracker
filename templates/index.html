@@ -3,135 +3,39 @@
 {% block title %}Dashboard — Finance Tracker{% endblock %}
 
 {% block content %}
-<div class="dashboard-header">
-    <h1>Dashboard</h1>
-    <p class="dashboard-subtitle">Your financial overview at a glance</p>
-</div>
-
-<!-- Summary Cards with animated counters -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon">📋</div>
-        <div class="stat-content">
-            <div class="stat-label">Transactions</div>
-            <div class="stat-value" data-count="{{ total_transactions }}">0</div>
-        </div>
+<div class="dashboard-header" style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:var(--space-lg);">
+    <div>
+        <h1>Dashboard</h1>
+        <p class="dashboard-subtitle">Your financial overview at a glance</p>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon">📈</div>
-        <div class="stat-content">
-            <div class="stat-label">Total Income</div>
-            <div class="stat-value income" data-count="{{ total_income }}" data-prefix="$">$0.00</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        {% if accounts %}
+        <button class="btn-add-tx" onclick="openTxModal()">
+            <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Transaction
+        </button>
+        {% endif %}
+        {% if transactions %}
+        <div class="edit-toolbar">
+            <span class="widget-count-badge" id="widget-count-badge"></span>
+            <button class="btn-edit-layout" id="toggle-edit-btn" onclick="toggleEditMode()">✎ Edit Layout</button>
         </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon">📉</div>
-        <div class="stat-content">
-            <div class="stat-label">Total Spent</div>
-            <div class="stat-value spent" data-count="{{ total_spent|abs }}" data-prefix="$">$0.00</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon">🏦</div>
-        <div class="stat-content">
-            <div class="stat-label">Accounts</div>
-            <div class="stat-value" data-count="{{ accounts|length }}">0</div>
-        </div>
+        {% endif %}
     </div>
 </div>
 
 {% if transactions %}
-<!-- Charts Row -->
-<div class="charts-grid">
-    <div class="chart-container chart-wide">
-        <h2>Balance Over Time</h2>
-        <canvas id="balanceChart"></canvas>
+
+<!-- Widget palette (shown in edit mode) -->
+<div class="widget-palette" id="widget-palette">
+    <div class="palette-header">
+        <span class="palette-title">+ Click a widget to add it to your dashboard</span>
+        <button class="palette-done-btn" onclick="toggleEditMode()">Done Editing</button>
     </div>
-    <div class="chart-container chart-narrow">
-        <h2>Spending by Category</h2>
-        <canvas id="categoryChart"></canvas>
-    </div>
+    <div class="palette-chips" id="palette-chips"></div>
 </div>
 
-<!-- Account Cards -->
-{% if accounts %}
-<div class="section-header">
-    <h2>Your Accounts</h2>
-</div>
-<div class="accounts-grid">
-    {% for account in accounts %}
-    <div class="account-card">
-        <div class="account-icon">
-            {% if account.institution == 'chase' %}🏦
-            {% elif account.institution == 'amex' %}💳
-            {% elif account.institution == 'fidelity' %}📊
-            {% elif account.institution == 'coinbase' %}🪙
-            {% elif account.institution == 'robinhood' %}🪶
-            {% elif account.institution == 'marcus' %}🏛️
-            {% elif account.institution == 'schwab' %}📈
-            {% else %}💰{% endif %}
-        </div>
-        <div class="account-info">
-            <div class="account-name">{{ account.name }}</div>
-            <div class="account-type">{{ account.account_type.replace('_', ' ').title() }}</div>
-        </div>
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
-
-<!-- Recent Activity Timeline -->
-<div class="section-header" style="display:flex;justify-content:space-between;align-items:center;">
-    <h2>Recent Activity</h2>
-    {% if review_stats.total > 0 %}
-    <div class="review-badge">
-        <span class="review-count">{{ review_stats.unreviewed }}</span> to review
-    </div>
-    {% endif %}
-</div>
-
-<!-- Search / Filter Bar -->
-<div class="search-bar">
-    <input type="text" id="transaction-search" placeholder="Search transactions..." class="search-input">
-    <select id="category-filter" class="search-select">
-        <option value="">All Categories</option>
-        {% set categories = [] %}
-        {% for t in transactions %}
-            {% if t.category not in categories %}
-                {% if categories.append(t.category) %}{% endif %}
-                <option value="{{ t.category }}">{{ t.category }}</option>
-            {% endif %}
-        {% endfor %}
-    </select>
-</div>
-
-<div class="activity-timeline" id="activity-timeline">
-    {% for t in transactions[:25] %}
-    <div class="timeline-item {{ 'item-reviewed' if t.reviewed }}" data-category="{{ t.category }}" data-description="{{ t.description|lower }}" data-id="{{ t.id }}">
-        <div class="timeline-dot {{ 'dot-income' if t.amount > 0 else 'dot-spent' }}"></div>
-        <div class="timeline-content">
-            <div class="timeline-row">
-                <button class="review-check {{ 'checked' if t.reviewed }}"
-                        onclick="toggleReview({{ t.id }}, {{ 'false' if t.reviewed else 'true' }})"
-                        title="{{ 'Mark as unreviewed' if t.reviewed else 'Mark as reviewed' }}">
-                    {{ '✓' if t.reviewed else '' }}
-                </button>
-                <div class="timeline-desc">{{ t.description }}</div>
-                <div class="timeline-amount {{ 'income' if t.amount > 0 else 'spent' }}">
-                    {{ '+' if t.amount > 0 else '-' }}${{ "%.2f"|format(t.amount|abs) }}
-                </div>
-            </div>
-            <div class="timeline-meta">
-                <span class="timeline-date">{{ t.date }}</span>
-                <span class="category-badge category-editable" onclick="editCategory(this, {{ t.id }})" data-tid="{{ t.id }}">{{ t.category }}</span>
-            </div>
-        </div>
-    </div>
-    {% endfor %}
-</div>
-{% if transactions|length > 25 %}
-<p class="muted" style="text-align:center;">Showing 25 of {{ transactions|length }} transactions</p>
-{% endif %}
+<!-- Widget grid -->
+<div class="widget-grid" id="widget-grid"></div>
 
 {% else %}
 <!-- Empty State -->
@@ -148,282 +52,993 @@
             <path d="M60 45 L75 38 L90 48 L105 35 L120 42 L135 30" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
         </svg>
     </div>
-    <h2 class="empty-title">No data yet</h2>
-    <p class="empty-text">Upload a CSV from your bank or brokerage to start tracking your finances.</p>
-    <a href="{{ url_for('upload') }}" class="btn-primary">Upload Your First CSV</a>
+    <h2 class="empty-title">No transactions yet</h2>
+    <p class="empty-text">Upload a CSV from your bank or add a transaction manually to start tracking.</p>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <a href="{{ url_for('upload') }}" class="btn-primary">Upload CSV</a>
+        {% if accounts %}
+        <button class="btn-primary" onclick="openTxModal()" style="cursor:pointer;">+ Add Manually</button>
+        {% endif %}
+    </div>
 </div>
 {% endif %}
+
+<!-- ============================================================
+     ADD / EDIT TRANSACTION MODAL  (blueprint wireframe)
+     ============================================================ -->
+{% if accounts %}
+<dialog id="tx-modal" class="tx-modal" aria-labelledby="tx-modal-title">
+    <div class="tx-modal-header">
+        <h2 id="tx-modal-title">Add Transaction</h2>
+        <button class="tx-modal-close" onclick="closeTxModal()" aria-label="Close">&times;</button>
+    </div>
+    <div class="tx-modal-body">
+        <form id="tx-form" onsubmit="saveTxModal(event)" novalidate>
+            <!-- Type: Expense / Income -->
+            <div class="tx-type-row" role="group" aria-label="Transaction type">
+                <label class="tx-type-label expense">
+                    <input type="radio" name="tx-type" value="expense" id="tx-type-expense" checked>
+                    <span class="tx-type-pill">
+                        <i data-lucide="arrow-down-circle" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;"></i>Expense
+                    </span>
+                </label>
+                <label class="tx-type-label income">
+                    <input type="radio" name="tx-type" value="income" id="tx-type-income">
+                    <span class="tx-type-pill">
+                        <i data-lucide="arrow-up-circle" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;"></i>Income
+                    </span>
+                </label>
+            </div>
+
+            <div class="tx-form-grid">
+                <div class="tx-form-group">
+                    <label for="tx-date">Date</label>
+                    <input type="date" id="tx-date" required>
+                </div>
+                <div class="tx-form-group">
+                    <label for="tx-account">Account</label>
+                    <select id="tx-account" required>
+                        {% for acct in accounts %}
+                        <option value="{{ acct.id }}">{{ acct.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="tx-form-group">
+                    <label for="tx-amount">Amount</label>
+                    <input type="number" id="tx-amount" step="0.01" min="0.01" placeholder="0.00" required>
+                </div>
+                <div class="tx-form-group">
+                    <label for="tx-category">Category</label>
+                    <select id="tx-category">
+                        <!-- populated by JS -->
+                    </select>
+                </div>
+                <div class="tx-form-group full-width">
+                    <label for="tx-description">Description / Merchant</label>
+                    <input type="text" id="tx-description" placeholder="e.g. Grocery Store" required>
+                </div>
+                <div class="tx-form-group full-width">
+                    <label for="tx-notes">Notes <span class="optional">(optional)</span></label>
+                    <input type="text" id="tx-notes" placeholder="e.g. Weekly shop">
+                </div>
+            </div>
+
+            <div id="tx-form-error" style="display:none;color:var(--color-spent);font-size:12px;margin-bottom:8px;padding:6px 10px;background:var(--bg-body);border-radius:var(--radius-sm);border-left:3px solid var(--color-spent);"></div>
+        </form>
+    </div>
+    <div class="tx-modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeTxModal()">Cancel</button>
+        <button type="submit" form="tx-form" class="btn-primary" id="tx-save-btn">Save Transaction</button>
+    </div>
+</dialog>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% if transactions or accounts %}
 <script>
-// ---- INLINE CATEGORY EDITING ----
-// Click a category badge to edit it right there
-var allCategories = {{ (transactions | map(attribute='category') | unique | sort | list) | tojson }};
+// ============================================================
+// DATA FROM FLASK
+// ============================================================
+var DASH = {
+    totalTransactions: {{ total_transactions|default(0) }},
+    totalIncome: {{ total_income|default(0) }},
+    totalSpent: {{ total_spent|default(0) }},
+    accountCount: {{ accounts|length }},
+    reviewStats: {
+        total: {{ review_stats.total|default(0) }},
+        reviewed: {{ review_stats.reviewed|default(0) }},
+        unreviewed: {{ review_stats.unreviewed|default(0) }}
+    },
+    accounts: [
+        {% for acct in accounts %}
+        { id: {{ acct.id }}, name: {{ acct.name|tojson }}, institution: {{ acct.institution|tojson }}, type: {{ acct.account_type|tojson }} }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ],
+    transactions: [
+        {% for t in transactions[:25] %}
+        { id: {{ t.id }}, date: {{ t.date|tojson }}, desc: {{ t.description|tojson }}, amount: {{ t.amount }}, category: {{ t.category|tojson }}, reviewed: {{ 'true' if t.reviewed else 'false' }}, notes: {{ (t.notes or '')|tojson }} }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ],
+    allCategories: {{ (transactions | map(attribute='category') | unique | sort | list) | tojson }},
+    hasMore: {{ (transactions|length > 25)|tojson }}
+};
 
-function editCategory(badge, tid) {
-    // Don't double-open
-    if (badge.querySelector('select')) return;
+// ============================================================
+// WIDGET CATALOG
+// ============================================================
+var WIDGETS = {
+    'balance-hero':  { n: 'Balance Hero',     i: '💰', sz: 'wide' },
+    'stats-row':     { n: 'Stats Row',        i: '📊', sz: 'wide' },
+    'stat-single':   { n: 'Single Stat',      i: '🔢', sz: 'half' },
+    'line-chart':    { n: 'Line Chart',       i: '📈', sz: 'wide' },
+    'area-chart':    { n: 'Area Chart',       i: '🏔️', sz: 'half' },
+    'bar-chart':     { n: 'Bar Chart',        i: '📊', sz: 'half' },
+    'donut':         { n: 'Donut Chart',      i: '🍩', sz: 'half' },
+    'horiz-bars':    { n: 'Category Bars',    i: '📏', sz: 'half' },
+    'sparklines':    { n: 'Sparklines',       i: '〰️', sz: 'half' },
+    'transactions':  { n: 'Transactions',     i: '📋', sz: 'wide' },
+    'budget-bars':   { n: 'Budget Progress',  i: '🎯', sz: 'half' },
+    'accounts':      { n: 'Account Cards',    i: '🏦', sz: 'half' },
+    'net-worth':     { n: 'Net Worth',        i: '💎', sz: 'half' },
+    'quick-actions': { n: 'Quick Actions',    i: '⚡', sz: 'half' },
+    'top-cats':      { n: 'Top Categories',   i: '🏷️', sz: 'half' },
+    'month-compare': { n: 'Month vs Month',   i: '📅', sz: 'half' },
+    'alerts':        { n: 'Alerts',           i: '🔔', sz: 'half' },
+    'ascii-chart':   { n: 'ASCII Chart',      i: '▓░', sz: 'wide' }
+};
 
-    var current = badge.textContent.trim();
-    var select = document.createElement('select');
-    select.className = 'category-select-inline';
+var DEFAULT_LAYOUT = ['stats-row', 'line-chart', 'donut', 'accounts', 'transactions'];
 
-    // Add existing categories as options
-    var seen = {};
-    allCategories.forEach(function(cat) {
-        if (!seen[cat]) {
-            var opt = document.createElement('option');
-            opt.value = cat;
-            opt.textContent = cat;
-            if (cat === current) opt.selected = true;
-            select.appendChild(opt);
-            seen[cat] = true;
-        }
-    });
+// ============================================================
+// STATE
+// ============================================================
+var layout = [];
+var isEditing = false;
+var draggingIdx = null;
+var dragOverIdx = null;
+var chartInstances = {};
+var monthlyData = null;
+var categoryData = null;
+var allCategories = DASH.allCategories.slice();
 
-    // Add a "custom" option
-    var customOpt = document.createElement('option');
-    customOpt.value = '__custom__';
-    customOpt.textContent = '+ New category...';
-    select.appendChild(customOpt);
+// SVG icon helpers (Lucide-style inline SVG)
+function iconEdit() {
+    return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+}
+function iconTrash() {
+    return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+}
 
-    badge.textContent = '';
-    badge.appendChild(select);
-    select.focus();
+// ============================================================
+// HELPERS
+// ============================================================
+function escHtml(s) {
+    return String(s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 
-    function saveCategory(newCat) {
-        if (!newCat || newCat === current) {
-            badge.textContent = current;
-            return;
-        }
-        fetch('/api/update-category', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({id: tid, category: newCat})
-        }).then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.ok) {
-                badge.textContent = newCat;
-                // Update the data attribute for filtering
-                var item = badge.closest('.timeline-item');
-                if (item) item.setAttribute('data-category', newCat);
-                // Add to known categories for future edits
-                if (allCategories.indexOf(newCat) === -1) allCategories.push(newCat);
-            } else {
-                badge.textContent = current;
+function fmtMoney(n) {
+    return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function accountIcon(inst) {
+    var icons = { chase:'🏦', amex:'💳', fidelity:'📊', coinbase:'🪙', robinhood:'🪶', marcus:'🏛️', schwab:'📈' };
+    return icons[(inst||'').toLowerCase()] || '💰';
+}
+
+function card(content) { return '<div class="widget-card">' + content + '</div>'; }
+
+// ============================================================
+// WIDGET RENDERERS
+// ============================================================
+var RENDERERS = {
+
+    'balance-hero': function(idx) {
+        var net = DASH.totalIncome + DASH.totalSpent;
+        var cls = net >= 0 ? 'income' : 'spent';
+        return card(
+            '<div class="widget-label">Net Balance</div>' +
+            '<div class="stat-value ' + cls + '" style="font-size:2rem;margin-bottom:4px;">' +
+            (net >= 0 ? '+' : '&minus;') + fmtMoney(Math.abs(net)) + '</div>' +
+            '<div style="font-size:12px;color:var(--text-muted);">+' + fmtMoney(DASH.totalIncome) + ' income &middot; &minus;' + fmtMoney(Math.abs(DASH.totalSpent)) + ' spent</div>'
+        );
+    },
+
+    'stats-row': function(idx) {
+        var stats = [
+            { label: 'Transactions', value: DASH.totalTransactions.toLocaleString(), cls: '' },
+            { label: 'Total Income',  value: '+' + fmtMoney(DASH.totalIncome),         cls: 'income' },
+            { label: 'Total Spent',   value: '&minus;' + fmtMoney(Math.abs(DASH.totalSpent)), cls: 'spent' },
+            { label: 'Accounts',      value: DASH.accountCount.toString(),             cls: '' }
+        ];
+        var html = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-md);">';
+        stats.forEach(function(s) {
+            html += '<div><div class="widget-label">' + s.label + '</div>' +
+                '<div class="stat-value ' + s.cls + '" style="font-size:1.4rem;">' + s.value + '</div></div>';
+        });
+        html += '</div>';
+        return card(html);
+    },
+
+    'stat-single': function(idx) {
+        var net = DASH.totalIncome + DASH.totalSpent;
+        var rate = DASH.totalIncome > 0 ? ((net / DASH.totalIncome) * 100).toFixed(1) : '0.0';
+        return card(
+            '<div class="widget-label">Net Savings</div>' +
+            '<div class="stat-value ' + (net >= 0 ? 'income' : 'spent') + '" style="font-size:1.5rem;margin-bottom:4px;">' +
+            (net >= 0 ? '+' : '&minus;') + fmtMoney(Math.abs(net)) + '</div>' +
+            '<div style="font-size:12px;color:var(--text-muted);">' + rate + '% savings rate</div>'
+        );
+    },
+
+    'line-chart': function(idx) {
+        return card('<div class="widget-heading">Balance Over Time</div>' +
+            '<div style="position:relative;height:160px;"><canvas id="canvas-line-' + idx + '"></canvas></div>');
+    },
+
+    'area-chart': function(idx) {
+        return card('<div class="widget-heading">Spending Trend</div>' +
+            '<div style="position:relative;height:140px;"><canvas id="canvas-area-' + idx + '"></canvas></div>');
+    },
+
+    'bar-chart': function(idx) {
+        return card('<div class="widget-heading">Monthly Balance</div>' +
+            '<div style="position:relative;height:140px;"><canvas id="canvas-bar-' + idx + '"></canvas></div>');
+    },
+
+    'donut': function(idx) {
+        return card('<div class="widget-heading">Spending by Category</div>' +
+            '<div style="position:relative;height:180px;"><canvas id="canvas-donut-' + idx + '"></canvas></div>');
+    },
+
+    'horiz-bars': function(idx) {
+        return card('<div class="widget-heading">Category Breakdown</div>' +
+            '<div id="horiz-bars-' + idx + '"><div style="color:var(--text-muted);font-size:13px;">Loading&hellip;</div></div>');
+    },
+
+    'sparklines': function(idx) {
+        return card('<div class="widget-heading">Trends</div>' +
+            '<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">Add more months of data to see spending trends.</div>');
+    },
+
+    'transactions': function(idx) {
+        // Search + filter bar
+        var html = '<div class="search-bar" style="margin-bottom:var(--space-md);">' +
+            '<input type="text" id="transaction-search" placeholder="Search transactions\u2026" class="search-input" aria-label="Search transactions">' +
+            '<select id="category-filter" class="search-select" aria-label="Filter by category">' +
+            '<option value="">All Categories</option>';
+        var seenCats = {};
+        DASH.transactions.forEach(function(t) {
+            if (!seenCats[t.category]) {
+                seenCats[t.category] = true;
+                html += '<option value="' + escHtml(t.category) + '">' + escHtml(t.category) + '</option>';
             }
         });
+        html += '</select></div>';
+
+        // Header row
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md);">' +
+            '<div class="widget-heading" style="margin:0;">Recent Activity</div>';
+        if (DASH.reviewStats.unreviewed > 0) {
+            html += '<div class="review-badge"><span class="review-count">' + DASH.reviewStats.unreviewed + '</span> to review</div>';
+        }
+        html += '</div>';
+
+        // Timeline
+        html += '<div class="activity-timeline" id="activity-timeline">';
+        DASH.transactions.forEach(function(t) {
+            var isIncome = t.amount > 0;
+            var absAmt = Math.abs(t.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            var sign = isIncome ? '+' : '&minus;';
+            html +=
+                '<div class="timeline-item' + (t.reviewed ? ' item-reviewed' : '') +
+                '" data-category="' + escHtml(t.category) +
+                '" data-description="' + escHtml(t.desc.toLowerCase()) +
+                '" data-id="' + t.id + '">' +
+                '<div class="timeline-dot ' + (isIncome ? 'dot-income' : 'dot-spent') + '"></div>' +
+                '<div class="timeline-content">' +
+                '<div class="timeline-row">' +
+                '<button class="review-check' + (t.reviewed ? ' checked' : '') +
+                '" onclick="toggleReview(' + t.id + ',' + (t.reviewed ? 'false' : 'true') + ')" ' +
+                'aria-label="' + (t.reviewed ? 'Mark as unreviewed' : 'Mark as reviewed') + '">' +
+                (t.reviewed ? '&#x2713;' : '') + '</button>' +
+                '<div class="timeline-desc">' + escHtml(t.desc) + '</div>' +
+                '<div class="timeline-amount ' + (isIncome ? 'income' : 'spent') + '" style="font-variant-numeric:tabular-nums;">' +
+                sign + '$' + absAmt + '</div>' +
+                // Edit + Delete action buttons (blueprint: row actions with aria-label)
+                '<div class="tx-actions">' +
+                '<button class="tx-action-btn" onclick="openTxModal(' + t.id + ')" aria-label="Edit transaction">' + iconEdit() + '</button>' +
+                '<button class="tx-action-btn delete" onclick="deleteTx(' + t.id + ',\'' + escHtml(t.desc).replace(/'/g,'\\\'') + '\')" aria-label="Delete transaction">' + iconTrash() + '</button>' +
+                '</div>' +
+                '</div>' +
+                '<div class="timeline-meta">' +
+                '<span class="timeline-date">' + escHtml(t.date) + '</span>' +
+                '<span class="category-badge category-editable" onclick="editCategory(this,' + t.id + ')" data-tid="' + t.id + '">' +
+                escHtml(t.category) + '</span>' +
+                '</div></div></div>';
+        });
+        html += '</div>';
+
+        if (DASH.hasMore) {
+            html += '<p class="muted" style="text-align:center;margin-top:var(--space-md);">Showing 25 of {{ transactions|length }} transactions</p>';
+        }
+        return card(html);
+    },
+
+    'budget-bars': function(idx) {
+        return card('<div class="widget-heading">Budget Progress</div>' +
+            '<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">' +
+            'Manage budgets on the <a href="/budget" style="color:var(--accent);">Budget page</a>.</div>');
+    },
+
+    'accounts': function(idx) {
+        if (!DASH.accounts.length) {
+            return card('<div class="widget-heading">Accounts</div><div style="color:var(--text-muted);font-size:13px;">No accounts yet.</div>');
+        }
+        var html = '<div class="widget-heading">Accounts</div><div style="display:flex;flex-direction:column;gap:8px;">';
+        DASH.accounts.forEach(function(acct) {
+            html += '<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-body);border-radius:var(--radius-sm);border:var(--border-width) solid var(--border-main);">' +
+                '<span style="font-size:1.2rem;">' + accountIcon(acct.institution) + '</span>' +
+                '<div style="flex:1;min-width:0;">' +
+                '<div style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(acct.name) + '</div>' +
+                '<div style="font-size:11px;color:var(--text-muted);">' +
+                escHtml(acct.type.replace(/_/g,' ').replace(/\b\w/g, function(c){return c.toUpperCase();})) +
+                '</div></div></div>';
+        });
+        html += '</div>';
+        return card(html);
+    },
+
+    'net-worth': function(idx) {
+        return card('<div class="widget-label">Net Worth</div>' +
+            '<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">Net worth tracking requires investment account data.</div>');
+    },
+
+    'quick-actions': function(idx) {
+        var actions = [
+            { label: 'Upload',  icon: 'upload',     href: '/upload' },
+            { label: 'Budget',  icon: 'target',     href: '/budget' },
+            { label: 'Rules',   icon: 'settings-2', href: '/rules' }
+        ];
+        var html = '<div class="widget-heading">Quick Actions</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
+        actions.forEach(function(a) {
+            html += '<a href="' + a.href + '" class="quick-action-btn">' +
+                '<i data-lucide="' + a.icon + '" style="width:18px;height:18px;"></i>' +
+                '<span>' + a.label + '</span></a>';
+        });
+        html += '</div>';
+        return card(html);
+    },
+
+    'top-cats': function(idx) {
+        return card('<div class="widget-heading">Top Categories</div>' +
+            '<div id="top-cats-' + idx + '"><div style="color:var(--text-muted);font-size:13px;">Loading&hellip;</div></div>');
+    },
+
+    'month-compare': function(idx) {
+        return card('<div class="widget-heading">Month vs Month</div>' +
+            '<div id="month-compare-' + idx + '"><div style="color:var(--text-muted);font-size:13px;">Loading&hellip;</div></div>');
+    },
+
+    'alerts': function(idx) {
+        var alerts = [];
+        if (DASH.reviewStats.unreviewed > 0) {
+            alerts.push({ icon: '📋', msg: DASH.reviewStats.unreviewed + ' transaction' + (DASH.reviewStats.unreviewed !== 1 ? 's' : '') + ' to review', color: 'var(--color-income)' });
+        }
+        if (!alerts.length) {
+            alerts.push({ icon: '✅', msg: 'All caught up! No alerts.', color: 'var(--color-income)' });
+        }
+        var html = '<div class="widget-heading">Alerts</div><div style="display:flex;flex-direction:column;gap:6px;">';
+        alerts.forEach(function(a) {
+            html += '<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;border-radius:var(--radius-sm);border-left:3px solid ' + a.color + ';background:var(--bg-body);">' +
+                '<span>' + a.icon + '</span>' +
+                '<span style="font-size:13px;color:var(--text-primary);">' + escHtml(a.msg) + '</span></div>';
+        });
+        html += '</div>';
+        return card(html);
+    },
+
+    'ascii-chart': function(idx) {
+        return card('<div class="widget-heading">Balance Trend</div>' +
+            '<pre style="font-family:var(--font-mono);font-size:11px;color:var(--color-income);line-height:1.4;margin:0;overflow-x:auto;" id="ascii-chart-' + idx + '">Loading\u2026</pre>');
+    }
+};
+
+// ============================================================
+// DRAG AND DROP
+// ============================================================
+function onDragStart(e, idx) {
+    draggingIdx = idx;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(function() {
+        var el = document.querySelector('[data-widget-idx="' + idx + '"]');
+        if (el) el.classList.add('is-dragging');
+    }, 0);
+}
+function onDragOver(e, idx) {
+    e.preventDefault();
+    if (draggingIdx === null || draggingIdx === idx) return;
+    if (dragOverIdx !== idx) {
+        clearDragOver();
+        dragOverIdx = idx;
+        var el = document.querySelector('[data-widget-idx="' + idx + '"]');
+        if (el) el.classList.add('drag-over');
+    }
+}
+function onDrop(e, idx) {
+    e.preventDefault();
+    if (draggingIdx === null || draggingIdx === idx) return;
+    var next = layout.slice();
+    var item = next.splice(draggingIdx, 1)[0];
+    next.splice(idx > draggingIdx ? idx - 1 : idx, 0, item);
+    layout = next;
+    draggingIdx = null; dragOverIdx = null;
+    saveLayout(); renderDashboard();
+}
+function onDropEnd(e) {
+    e.preventDefault();
+    if (draggingIdx === null) return;
+    var next = layout.slice();
+    var item = next.splice(draggingIdx, 1)[0];
+    next.push(item);
+    layout = next;
+    draggingIdx = null; dragOverIdx = null;
+    saveLayout(); renderDashboard();
+}
+function onDragEnd() {
+    clearDragOver();
+    var el = document.querySelector('.is-dragging');
+    if (el) el.classList.remove('is-dragging');
+    draggingIdx = null; dragOverIdx = null;
+}
+function clearDragOver() {
+    document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); });
+}
+
+// ============================================================
+// LAYOUT MANAGEMENT
+// ============================================================
+function addWidget(wid) { layout.push(wid); saveLayout(); renderDashboard(); }
+function removeWidget(idx) { layout.splice(idx, 1); saveLayout(); renderDashboard(); }
+function saveLayout() {
+    localStorage.setItem('dashboard-layout', JSON.stringify(layout));
+    var badge = document.getElementById('widget-count-badge');
+    if (badge) badge.textContent = layout.length + ' widget' + (layout.length !== 1 ? 's' : '');
+}
+function toggleEditMode() {
+    isEditing = !isEditing;
+    var btn = document.getElementById('toggle-edit-btn');
+    if (btn) btn.textContent = isEditing ? '✕ Done Editing' : '✎ Edit Layout';
+    var palette = document.getElementById('widget-palette');
+    if (palette) palette.classList.toggle('palette-visible', isEditing);
+    renderDashboard();
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function renderPalette() {
+    var chips = document.getElementById('palette-chips');
+    if (!chips) return;
+    chips.innerHTML = '';
+    Object.keys(WIDGETS).forEach(function(wid) {
+        var w = WIDGETS[wid];
+        var btn = document.createElement('button');
+        btn.className = 'widget-chip';
+        btn.innerHTML = '<span style="font-size:1.1em;">' + w.i + '</span>' + escHtml(w.n);
+        btn.title = w.sz === 'wide' ? 'Full width' : 'Half width';
+        btn.onclick = function() { addWidget(wid); };
+        chips.appendChild(btn);
+    });
+}
+
+function destroyCharts() {
+    Object.keys(chartInstances).forEach(function(k) {
+        try { chartInstances[k].destroy(); } catch(e) {}
+    });
+    chartInstances = {};
+}
+
+function renderDashboard() {
+    destroyCharts();
+    var grid = document.getElementById('widget-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    layout.forEach(function(wid, idx) {
+        var w = WIDGETS[wid];
+        if (!w || !RENDERERS[wid]) return;
+        var wrap = document.createElement('div');
+        wrap.className = 'widget-wrap' + (w.sz === 'wide' ? ' widget-wide' : '');
+        wrap.setAttribute('data-widget-idx', idx);
+
+        if (isEditing) {
+            wrap.setAttribute('draggable', 'true');
+            wrap.style.cursor = 'grab';
+            wrap.addEventListener('dragstart', (function(i){ return function(e){ onDragStart(e, i); }; })(idx));
+            wrap.addEventListener('dragover',  (function(i){ return function(e){ onDragOver(e, i); }; })(idx));
+            wrap.addEventListener('drop',      (function(i){ return function(e){ onDrop(e, i); }; })(idx));
+            wrap.addEventListener('dragend', onDragEnd);
+
+            var removeBtn = document.createElement('button');
+            removeBtn.className = 'widget-remove-btn';
+            removeBtn.innerHTML = '&times;';
+            removeBtn.title = 'Remove widget';
+            removeBtn.setAttribute('aria-label', 'Remove ' + w.n + ' widget');
+            removeBtn.addEventListener('click', (function(i){ return function(e){ e.stopPropagation(); removeWidget(i); }; })(idx));
+            wrap.appendChild(removeBtn);
+        }
+
+        var inner = document.createElement('div');
+        inner.innerHTML = RENDERERS[wid](idx);
+        wrap.appendChild(inner);
+        grid.appendChild(wrap);
+    });
+
+    // Trailing drop zone in edit mode
+    if (isEditing) {
+        var dz = document.createElement('div');
+        dz.className = 'widget-drop-zone widget-wide';
+        dz.textContent = 'Drop widgets here';
+        dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('drop-zone-active'); dz.textContent = 'Drop here'; });
+        dz.addEventListener('dragleave', function() { dz.classList.remove('drop-zone-active'); dz.textContent = 'Drop widgets here'; });
+        dz.addEventListener('drop', function(e) { dz.classList.remove('drop-zone-active'); onDropEnd(e); });
+        grid.appendChild(dz);
     }
 
-    select.addEventListener('change', function() {
-        if (select.value === '__custom__') {
-            var custom = prompt('Enter new category name:');
-            if (custom && custom.trim()) {
-                saveCategory(custom.trim());
-            } else {
-                badge.textContent = current;
-            }
-        } else {
-            saveCategory(select.value);
-        }
-    });
+    var badge = document.getElementById('widget-count-badge');
+    if (badge) badge.textContent = layout.length + ' widget' + (layout.length !== 1 ? 's' : '');
 
-    select.addEventListener('blur', function() {
-        // Small delay so change event fires first
-        setTimeout(function() {
-            if (badge.querySelector('select')) badge.textContent = current;
-        }, 150);
-    });
+    // Re-run Lucide icon replacement on newly rendered elements
+    if (window.lucide) lucide.createIcons();
+
+    initAsyncWidgets();
+    initSearchFilter();
 }
 
-// ---- REVIEW TOGGLE ----
-function toggleReview(id, reviewed) {
-    fetch('/api/review', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({id: id, reviewed: reviewed})
-    }).then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.ok) {
-            var item = document.querySelector('[data-id="' + id + '"]');
-            var btn = item.querySelector('.review-check');
-            if (reviewed) {
-                item.classList.add('item-reviewed');
-                btn.classList.add('checked');
-                btn.textContent = '✓';
-            } else {
-                item.classList.remove('item-reviewed');
-                btn.classList.remove('checked');
-                btn.textContent = '';
-            }
-            // Update the review count badge
-            var badge = document.querySelector('.review-count');
-            if (badge) {
-                var current = parseInt(badge.textContent);
-                badge.textContent = reviewed ? Math.max(0, current - 1) : current + 1;
-            }
-        }
-    });
-}
-
-// ---- ANIMATED NUMBER COUNTERS ----
-document.querySelectorAll('[data-count]').forEach(function(el) {
-    var target = parseFloat(el.getAttribute('data-count'));
-    var prefix = el.getAttribute('data-prefix') || '';
-    var isDecimal = prefix === '$';
-    var duration = 1200;
-    var start = performance.now();
-
-    function animate(now) {
-        var elapsed = now - start;
-        var progress = Math.min(elapsed / duration, 1);
-        // Ease out cubic
-        var eased = 1 - Math.pow(1 - progress, 3);
-        var current = target * eased;
-
-        if (isDecimal) {
-            el.textContent = prefix + current.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        } else {
-            el.textContent = prefix + Math.round(current).toLocaleString();
-        }
-
-        if (progress < 1) {
-            requestAnimationFrame(animate);
-        }
-    }
-    requestAnimationFrame(animate);
-});
-
-// ---- SEARCH & FILTER ----
-var searchInput = document.getElementById('transaction-search');
-var categoryFilter = document.getElementById('category-filter');
-
-function filterTransactions() {
-    var searchTerm = (searchInput ? searchInput.value : '').toLowerCase();
-    var categoryTerm = categoryFilter ? categoryFilter.value : '';
-    var items = document.querySelectorAll('.timeline-item');
-
-    items.forEach(function(item) {
-        var desc = item.getAttribute('data-description');
-        var cat = item.getAttribute('data-category');
-        var matchSearch = !searchTerm || desc.indexOf(searchTerm) !== -1;
-        var matchCategory = !categoryTerm || cat === categoryTerm;
-        item.style.display = (matchSearch && matchCategory) ? '' : 'none';
-    });
-}
-
-if (searchInput) searchInput.addEventListener('input', filterTransactions);
-if (categoryFilter) categoryFilter.addEventListener('change', filterTransactions);
-
-// ---- CHARTS ----
-// Theme-aware colors
-function getThemeColors() {
-    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+// ============================================================
+// ASYNC WIDGET DATA
+// ============================================================
+function getChartColors() {
+    var cs = getComputedStyle(document.documentElement);
+    function v(n) { return cs.getPropertyValue(n).trim(); }
     return {
-        text: isDark ? '#c4a882' : '#6b5a45',
-        grid: isDark ? '#3d2e1e' : '#e0d5c5',
-        income: isDark ? '#588157' : '#3d6b42',
-        spent: isDark ? '#d1495b' : '#b53a4a',
-        // Donut chart colors pulled from abacus beads
-        donut: ['#d1495b','#457b9d','#588157','#e9c46a','#e76f51','#c4956a','#8b6914','#a08c72']
+        text:    v('--text-secondary') || '#6b5a45',
+        grid:    v('--border-main')    || '#e0d5c5',
+        income:  v('--color-income')   || '#3d6b42',
+        spent:   v('--color-spent')    || '#b53a4a',
+        accent:  v('--accent')         || '#b5651d',
+        card:    v('--bg-card')        || '#ffffff',
+        palette: ['#d1495b','#457b9d','#588157','#e9c46a','#e76f51','#c4956a','#8b6914','#a08c72']
     };
 }
 
-{% if transactions %}
-// Balance Over Time Chart
-fetch('/api/monthly-summary')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (!data.length) return;
-        var colors = getThemeColors();
-        var ctx = document.getElementById('balanceChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.map(function(d) { return d.month; }),
-                datasets: [{
-                    label: 'Cumulative Balance',
-                    data: data.map(function(d) { return d.balance; }),
-                    borderColor: colors.income,
-                    backgroundColor: colors.income + '20',
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(ctx) {
-                                return '$' + ctx.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2});
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
-                    y: {
-                        ticks: {
-                            color: colors.text,
-                            callback: function(v) { return '$' + v.toLocaleString(); }
-                        },
-                        grid: { color: colors.grid }
-                    }
-                }
-            }
-        });
-    });
+function initAsyncWidgets() {
+    var needsMonthly = ['line-chart','area-chart','bar-chart','month-compare','ascii-chart']
+        .some(function(w){ return layout.indexOf(w) !== -1; });
+    var needsCategory = ['donut','horiz-bars','top-cats']
+        .some(function(w){ return layout.indexOf(w) !== -1; });
 
-// Spending by Category Donut
-fetch('/api/spending-by-category')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (!data.labels.length) return;
-        var colors = getThemeColors();
-        var ctx = document.getElementById('categoryChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: data.labels,
-                datasets: [{
-                    data: data.values,
-                    backgroundColor: colors.donut.slice(0, data.labels.length),
-                    borderWidth: 2,
-                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-card').trim()
-                }]
-            },
-            options: {
-                responsive: true,
-                cutout: '60%',
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: colors.text,
-                            padding: 12,
-                            usePointStyle: true,
-                            pointStyle: 'circle'
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(ctx) {
-                                var total = ctx.dataset.data.reduce(function(a,b) { return a+b; }, 0);
-                                var pct = ((ctx.parsed / total) * 100).toFixed(1);
-                                return ctx.label + ': $' + ctx.parsed.toLocaleString('en-US', {minimumFractionDigits:2}) + ' (' + pct + '%)';
-                            }
-                        }
-                    }
-                }
+    if (needsMonthly) {
+        if (monthlyData) renderMonthlyWidgets(monthlyData);
+        else fetch('/api/monthly-summary').then(function(r){ return r.json(); }).then(function(d){ monthlyData = d; renderMonthlyWidgets(d); });
+    }
+    if (needsCategory) {
+        if (categoryData) renderCategoryWidgets(categoryData);
+        else fetch('/api/spending-by-category').then(function(r){ return r.json(); }).then(function(d){ categoryData = d; renderCategoryWidgets(d); });
+    }
+}
+
+function renderMonthlyWidgets(data) {
+    if (!data || !data.length) return;
+    var colors = getChartColors();
+    var labels = data.map(function(d){ return d.month; });
+    var balances = data.map(function(d){ return d.balance || 0; });
+
+    layout.forEach(function(wid, idx) {
+        var canvas;
+        if (wid === 'line-chart') {
+            canvas = document.getElementById('canvas-line-' + idx);
+            if (!canvas) return;
+            chartInstances['line-' + idx] = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: { labels: labels, datasets: [{ label: 'Balance', data: balances,
+                    borderColor: colors.income, backgroundColor: colors.income + '25', fill: true, tension: 0.35, pointRadius: 3 }] },
+                options: { responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c){ return '$' + c.parsed.y.toLocaleString('en-US',{minimumFractionDigits:2}); } } } },
+                    scales: { x: { ticks: { color: colors.text, maxTicksLimit: 7 }, grid: { color: colors.grid } },
+                        y: { ticks: { color: colors.text, callback: function(v){ return '$' + v.toLocaleString(); } }, grid: { color: colors.grid } } } }
+            });
+        }
+        if (wid === 'area-chart') {
+            canvas = document.getElementById('canvas-area-' + idx);
+            if (!canvas) return;
+            chartInstances['area-' + idx] = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: { labels: labels, datasets: [{ label: 'Balance', data: balances,
+                    borderColor: colors.spent, backgroundColor: colors.spent + '25', fill: true, tension: 0.4, pointRadius: 2 }] },
+                options: { responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { ticks: { color: colors.text, maxTicksLimit: 7 }, grid: { color: colors.grid } },
+                        y: { ticks: { color: colors.text, callback: function(v){ return '$' + v.toLocaleString(); } }, grid: { color: colors.grid } } } }
+            });
+        }
+        if (wid === 'bar-chart') {
+            canvas = document.getElementById('canvas-bar-' + idx);
+            if (!canvas) return;
+            chartInstances['bar-' + idx] = new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ label: 'Balance', data: balances,
+                    backgroundColor: balances.map(function(b){ return b >= 0 ? colors.income + 'cc' : colors.spent + 'cc'; }),
+                    borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { ticks: { color: colors.text, maxTicksLimit: 7 }, grid: { display: false } },
+                        y: { ticks: { color: colors.text, callback: function(v){ return '$' + v.toLocaleString(); } }, grid: { color: colors.grid } } } }
+            });
+        }
+        if (wid === 'month-compare') {
+            var el = document.getElementById('month-compare-' + idx);
+            if (!el || data.length < 2) { if (el) el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Not enough data yet.</div>'; return; }
+            var cur = data[data.length - 1], prev = data[data.length - 2];
+            var cb = cur.balance || 0, pb = prev.balance || 0, diff = cb - pb;
+            var pct = pb !== 0 ? ((diff / Math.abs(pb)) * 100).toFixed(1) : '0.0';
+            el.innerHTML =
+                '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;">' +
+                '<div><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">' + cur.month + '</div>' +
+                '<div style="font-size:1.2rem;font-weight:700;font-family:var(--font-mono);color:' + (cb >= 0 ? 'var(--color-income)' : 'var(--color-spent)') + ';">' + (cb >= 0 ? '+' : '&minus;') + fmtMoney(Math.abs(cb)) + '</div></div>' +
+                '<div><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">' + prev.month + '</div>' +
+                '<div style="font-size:1.2rem;font-weight:700;font-family:var(--font-mono);color:var(--text-secondary);">' + (pb >= 0 ? '+' : '&minus;') + fmtMoney(Math.abs(pb)) + '</div></div></div>' +
+                '<div style="padding:6px 10px;border-radius:var(--radius-sm);background:var(--bg-body);font-size:12px;text-align:center;color:' + (diff >= 0 ? 'var(--color-income)' : 'var(--color-spent)') + ';">' +
+                (diff >= 0 ? '&#x2191;' : '&#x2193;') + ' ' + Math.abs(pct) + '% ' + (diff >= 0 ? 'gain' : 'drop') + ' vs last month</div>';
+        }
+        if (wid === 'ascii-chart') {
+            var el = document.getElementById('ascii-chart-' + idx);
+            if (!el || !data.length) return;
+            var slice = data.slice(-12);
+            var bals = slice.map(function(d){ return d.balance || 0; });
+            var maxB = Math.max.apply(null, bals), minB = Math.min.apply(null, bals);
+            var lines = [];
+            for (var row = 4; row >= 0; row--) {
+                var threshold = minB + ((maxB - minB) / 5) * (row + 1);
+                var label = '$' + (Math.abs(threshold) >= 1000 ? (threshold/1000).toFixed(1)+'k' : threshold.toFixed(0));
+                while (label.length < 7) label = ' ' + label;
+                var line = label + ' \u2524';
+                bals.forEach(function(b){ line += b >= threshold ? '\u2588' : '\u2591'; line += ' '; });
+                lines.push(line);
             }
-        });
+            lines.push('        \u2514' + bals.map(function(){ return '\u2500\u2500'; }).join(''));
+            lines.push('         ' + slice.map(function(d, i){ return i % 2 === 0 ? d.month.slice(0,3) + ' ' : '    '; }).join(''));
+            el.textContent = lines.join('\n');
+        }
     });
-{% endif %}
+}
+
+function renderCategoryWidgets(data) {
+    if (!data || !data.labels || !data.labels.length) return;
+    var colors = getChartColors();
+    layout.forEach(function(wid, idx) {
+        if (wid === 'donut') {
+            var canvas = document.getElementById('canvas-donut-' + idx);
+            if (!canvas) return;
+            chartInstances['donut-' + idx] = new Chart(canvas.getContext('2d'), {
+                type: 'doughnut',
+                data: { labels: data.labels,
+                    datasets: [{ data: data.values, backgroundColor: colors.palette.slice(0, data.labels.length), borderWidth: 2, borderColor: colors.card }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '60%',
+                    plugins: { legend: { position: 'bottom', labels: { color: colors.text, padding: 8, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } } },
+                        tooltip: { callbacks: { label: function(c) {
+                            var total = c.dataset.data.reduce(function(a,b){return a+b;},0);
+                            return c.label + ': $' + c.parsed.toLocaleString('en-US',{minimumFractionDigits:2}) + ' (' + ((c.parsed/total)*100).toFixed(1) + '%)';
+                        } } } } }
+            });
+        }
+        if (wid === 'horiz-bars') {
+            var el = document.getElementById('horiz-bars-' + idx);
+            if (!el) return;
+            var total = data.values.reduce(function(a,b){return a+b;},0);
+            var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+            data.labels.slice(0,6).forEach(function(label, i) {
+                var val = data.values[i], pct = total > 0 ? (val/total*100) : 0;
+                html += '<div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">' +
+                    '<span style="color:var(--text-secondary);">' + escHtml(label) + '</span>' +
+                    '<span style="font-family:var(--font-mono);">&minus;$' + val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span></div>' +
+                    '<div style="height:4px;background:var(--border-main);border-radius:2px;">' +
+                    '<div style="height:100%;width:' + pct.toFixed(1) + '%;background:var(--accent);border-radius:2px;"></div></div></div>';
+            });
+            if (data.labels.length > 6) html += '<div style="font-size:11px;color:var(--text-muted);text-align:center;">+ ' + (data.labels.length-6) + ' more</div>';
+            html += '</div>';
+            el.innerHTML = html;
+        }
+        if (wid === 'top-cats') {
+            var el = document.getElementById('top-cats-' + idx);
+            if (!el) return;
+            var total = data.values.reduce(function(a,b){return a+b;},0);
+            var html = '';
+            data.labels.slice(0,5).forEach(function(label, i) {
+                var val = data.values[i], pct = total > 0 ? ((val/total)*100).toFixed(1) : '0.0';
+                html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;' +
+                    (i < Math.min(data.labels.length,5)-1 ? 'border-bottom:1px solid var(--border-main);' : '') + '">' +
+                    '<div style="display:flex;align-items:center;gap:6px;"><span style="font-size:10px;font-weight:600;color:var(--text-muted);width:14px;text-align:right;">' + (i+1) + '</span>' +
+                    '<span style="font-size:13px;">' + escHtml(label) + '</span></div>' +
+                    '<div style="display:flex;gap:8px;align-items:baseline;">' +
+                    '<span style="font-size:12px;font-family:var(--font-mono);">&minus;$' + val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span>' +
+                    '<span style="font-size:10px;color:var(--text-muted);width:34px;text-align:right;">' + pct + '%</span></div></div>';
+            });
+            el.innerHTML = html || '<div style="color:var(--text-muted);font-size:13px;">No spending data.</div>';
+        }
+    });
+}
+
+// ============================================================
+// SEARCH & FILTER
+// ============================================================
+function initSearchFilter() {
+    var search = document.getElementById('transaction-search');
+    var filter = document.getElementById('category-filter');
+    function run() {
+        var s = search ? search.value.toLowerCase() : '';
+        var c = filter ? filter.value : '';
+        document.querySelectorAll('.timeline-item').forEach(function(item) {
+            var ms = !s || (item.getAttribute('data-description')||'').indexOf(s) !== -1;
+            var mc = !c || item.getAttribute('data-category') === c;
+            item.style.display = (ms && mc) ? '' : 'none';
+        });
+    }
+    if (search) search.addEventListener('input', run);
+    if (filter) filter.addEventListener('change', run);
+}
+
+// ============================================================
+// REVIEW TOGGLE
+// ============================================================
+function toggleReview(id, reviewed) {
+    fetch('/api/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id, reviewed: reviewed })
+    }).then(function(r){ return r.json(); }).then(function(data) {
+        if (!data.ok) return;
+        var item = document.querySelector('[data-id="' + id + '"]');
+        var btn = item ? item.querySelector('.review-check') : null;
+        if (item && btn) {
+            if (reviewed) { item.classList.add('item-reviewed'); btn.classList.add('checked'); btn.innerHTML = '&#x2713;'; btn.setAttribute('aria-label','Mark as unreviewed'); }
+            else { item.classList.remove('item-reviewed'); btn.classList.remove('checked'); btn.innerHTML = ''; btn.setAttribute('aria-label','Mark as reviewed'); }
+        }
+        var badge = document.querySelector('.review-count');
+        if (badge) { var cur = parseInt(badge.textContent)||0; badge.textContent = reviewed ? Math.max(0,cur-1) : cur+1; }
+        DASH.transactions.forEach(function(t){ if (t.id===id) t.reviewed=!!reviewed; });
+    });
+}
+
+// ============================================================
+// INLINE CATEGORY EDITING
+// ============================================================
+function editCategory(badge, tid) {
+    if (badge.querySelector('select')) return;
+    var current = badge.textContent.trim();
+    var select = document.createElement('select');
+    select.className = 'category-select-inline';
+    var seen = {};
+    allCategories.forEach(function(cat) {
+        if (!seen[cat]) { seen[cat]=true; var opt=document.createElement('option'); opt.value=cat; opt.textContent=cat; if(cat===current) opt.selected=true; select.appendChild(opt); }
+    });
+    var customOpt = document.createElement('option'); customOpt.value='__custom__'; customOpt.textContent='+ New category\u2026'; select.appendChild(customOpt);
+    badge.textContent=''; badge.appendChild(select); select.focus();
+    function save(newCat) {
+        if (!newCat||newCat===current) { badge.textContent=current; return; }
+        fetch('/api/update-category',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:tid,category:newCat}) })
+        .then(function(r){ return r.json(); }).then(function(data) {
+            if(data.ok){ badge.textContent=newCat; var item=badge.closest('.timeline-item'); if(item) item.setAttribute('data-category',newCat); if(allCategories.indexOf(newCat)===-1) allCategories.push(newCat); DASH.transactions.forEach(function(t){ if(t.id===tid) t.category=newCat; }); }
+            else { badge.textContent=current; }
+        });
+    }
+    select.addEventListener('change', function() { if(select.value==='__custom__'){ var c=prompt('Enter new category name:'); if(c&&c.trim()) save(c.trim()); else badge.textContent=current; } else save(select.value); });
+    select.addEventListener('blur', function(){ setTimeout(function(){ if(badge.querySelector('select')) badge.textContent=current; },150); });
+}
+
+// ============================================================
+// ADD / EDIT / DELETE TRANSACTION MODAL
+// (blueprint wireframe: type, date, account, amount, category, merchant, notes)
+// ============================================================
+var editingTxId = null;
+
+function populateCategorySelect() {
+    var sel = document.getElementById('tx-category');
+    if (!sel) return;
+    sel.innerHTML = '';
+    allCategories.forEach(function(cat) {
+        var opt = document.createElement('option');
+        opt.value = cat; opt.textContent = cat;
+        sel.appendChild(opt);
+    });
+    var custom = document.createElement('option'); custom.value='__custom__'; custom.textContent='+ New category\u2026'; sel.appendChild(custom);
+    // default
+    if (sel.options.length && !editingTxId) {
+        var idx = Array.from(sel.options).findIndex(function(o){ return o.value==='Uncategorized'; });
+        if (idx>=0) sel.selectedIndex=idx;
+    }
+}
+
+function openTxModal(txId) {
+    var modal = document.getElementById('tx-modal');
+    if (!modal) return;
+
+    editingTxId = txId || null;
+    var title = document.getElementById('tx-modal-title');
+    if (title) title.textContent = txId ? 'Edit Transaction' : 'Add Transaction';
+    var saveBtn = document.getElementById('tx-save-btn');
+    if (saveBtn) saveBtn.textContent = txId ? 'Save Changes' : 'Save Transaction';
+
+    // Set today's date as default
+    var dateInput = document.getElementById('tx-date');
+    var today = new Date().toISOString().split('T')[0];
+
+    // Populate categories
+    populateCategorySelect();
+
+    // Pre-fill form for edit
+    if (txId) {
+        var tx = DASH.transactions.find(function(t){ return t.id===txId; });
+        if (tx) {
+            if (dateInput) dateInput.value = tx.date;
+            document.getElementById('tx-amount').value = Math.abs(tx.amount).toFixed(2);
+            document.getElementById('tx-description').value = tx.desc;
+            document.getElementById('tx-notes').value = tx.notes || '';
+            // Set type radio
+            var type = tx.amount >= 0 ? 'income' : 'expense';
+            document.querySelector('input[name="tx-type"][value="' + type + '"]').checked = true;
+            // Set category
+            var catSel = document.getElementById('tx-category');
+            if (catSel) {
+                var opt = Array.from(catSel.options).find(function(o){ return o.value===tx.category; });
+                if (opt) catSel.value = tx.category;
+            }
+            // Set account
+            var acctSel = document.getElementById('tx-account');
+            // find the account for this transaction
+            DASH.transactions.forEach(function(t){ if (t.id===txId && acctSel) acctSel.value = t.account_id || acctSel.value; });
+        }
+    } else {
+        if (dateInput) dateInput.value = today;
+        document.getElementById('tx-amount').value = '';
+        document.getElementById('tx-description').value = '';
+        document.getElementById('tx-notes').value = '';
+        document.querySelector('input[name="tx-type"][value="expense"]').checked = true;
+    }
+
+    // Hide error
+    var err = document.getElementById('tx-form-error');
+    if (err) err.style.display = 'none';
+
+    modal.showModal();
+    // Focus first input
+    setTimeout(function(){ if (dateInput) dateInput.focus(); }, 50);
+}
+
+function closeTxModal() {
+    var modal = document.getElementById('tx-modal');
+    if (modal) modal.close();
+    editingTxId = null;
+}
+
+function saveTxModal(e) {
+    e.preventDefault();
+    var err = document.getElementById('tx-form-error');
+
+    var type = document.querySelector('input[name="tx-type"]:checked').value;
+    var date = document.getElementById('tx-date').value;
+    var accountId = document.getElementById('tx-account').value;
+    var amountRaw = parseFloat(document.getElementById('tx-amount').value);
+    var description = document.getElementById('tx-description').value.trim();
+    var notes = document.getElementById('tx-notes').value.trim();
+    var catSel = document.getElementById('tx-category');
+    var category = catSel ? catSel.value : 'Uncategorized';
+
+    // Validation (blueprint: "Enter a valid amount", "Choose a date to continue")
+    if (!date) { showTxError('Choose a date to continue.'); return; }
+    if (!description) { showTxError('Enter a description or merchant name.'); return; }
+    if (isNaN(amountRaw) || amountRaw <= 0) { showTxError('Enter a valid amount greater than zero.'); return; }
+    if (!accountId) { showTxError('Select an account.'); return; }
+
+    // Handle new custom category
+    if (category === '__custom__') {
+        var custom = prompt('Enter new category name:');
+        if (!custom || !custom.trim()) { showTxError('Enter a category name.'); return; }
+        category = custom.trim();
+        if (allCategories.indexOf(category) === -1) allCategories.push(category);
+    }
+
+    // Convert to signed amount
+    var amount = type === 'expense' ? -Math.abs(amountRaw) : Math.abs(amountRaw);
+
+    var btn = document.getElementById('tx-save-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
+
+    var url = editingTxId ? '/api/transactions/' + editingTxId : '/api/transactions';
+    var method = editingTxId ? 'PUT' : 'POST';
+    var payload = { date: date, description: description, amount: amount, category: category, notes: notes };
+    if (!editingTxId) payload.account_id = parseInt(accountId);
+
+    fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+        if (btn) { btn.disabled = false; btn.textContent = editingTxId ? 'Save Changes' : 'Save Transaction'; }
+        if (data.ok) {
+            closeTxModal();
+            // Invalidate cached chart data so it re-fetches
+            monthlyData = null; categoryData = null;
+            // Reload to see the new transaction
+            window.location.reload();
+        } else {
+            showTxError(data.error || 'Save failed \u2014 please try again.');
+        }
+    })
+    .catch(function() {
+        if (btn) { btn.disabled = false; btn.textContent = editingTxId ? 'Save Changes' : 'Save Transaction'; }
+        showTxError('Network error. Try again, or check your connection.');
+    });
+}
+
+function showTxError(msg) {
+    var err = document.getElementById('tx-form-error');
+    if (err) { err.textContent = msg; err.style.display = 'block'; }
+}
+
+function deleteTx(id, desc) {
+    if (!confirm('Delete "' + desc + '"?\nThis cannot be undone.')) return;
+    fetch('/api/transactions/' + id, { method: 'DELETE' })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            monthlyData = null; categoryData = null;
+            window.location.reload();
+        } else {
+            alert('Delete failed: ' + (data.error || 'Unknown error'));
+        }
+    });
+}
+
+// Close modal on backdrop click (native dialog behavior enhancement)
+document.addEventListener('DOMContentLoaded', function() {
+    var modal = document.getElementById('tx-modal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeTxModal();
+        });
+    }
+});
+
+// ============================================================
+// QUICK-ACTION BUTTON STYLE (injected once)
+// ============================================================
+(function() {
+    var s = document.createElement('style');
+    s.textContent = '.quick-action-btn{display:flex;flex-direction:column;align-items:center;padding:10px 8px;background:var(--bg-body);border-radius:var(--radius-sm);border:var(--border-width) solid var(--border-main);text-decoration:none;color:var(--text-secondary);font-size:11px;gap:4px;transition:border-color var(--transition-speed)}.quick-action-btn:hover{border-color:var(--accent);color:var(--text-primary);}';
+    document.head.appendChild(s);
+})();
+
+// ============================================================
+// INIT
+// ============================================================
+(function init() {
+    var saved = localStorage.getItem('dashboard-layout');
+    if (saved) {
+        try { var p = JSON.parse(saved); layout = p.filter(function(w){ return WIDGETS[w]; }); }
+        catch(e) { layout = DEFAULT_LAYOUT.slice(); }
+    } else {
+        layout = DEFAULT_LAYOUT.slice();
+    }
+    if (document.getElementById('widget-grid')) {
+        renderPalette();
+        renderDashboard();
+    }
+    if (window.lucide) lucide.createIcons();
+})();
 </script>
+{% endif %}
 {% endblock %}

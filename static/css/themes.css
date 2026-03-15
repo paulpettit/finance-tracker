@@ -1,0 +1,963 @@
+/*
+ * ============================================================
+ * FINANCE TRACKER — THEME SYSTEM v5
+ * ============================================================
+ *
+ * Each theme is a complete design personality across 6 axes:
+ *   1. Typography  — family, size scale, weight, tracking, line-height
+ *   2. Density     — spacing multiplier, card/table/nav padding
+ *   3. Shape       — border-radius, border weight, shadow style
+ *   4. Layout      — container width, grid columns, card min-width
+ *   5. Motion      — transition speed + easing curve
+ *   6. Effects     — theme-specific visual signatures (in style.css)
+ *
+ * Themes activated via data-theme="name" on <html>.
+ */
+
+
+/* =============================================
+   1. ABACUS LIGHT (default)
+   Purple-accented, matches undraw illustration palette
+   DM Serif Display headings + Inter body
+   SVG primary: #6c63ff · navy text · emerald income
+   ============================================= */
+:root,
+[data-theme="abacus-light"] {
+    /* --- Typography --- */
+    --font-body: 'Inter', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-heading: 'DM Serif Display', Georgia, serif;
+    --font-mono: 'JetBrains Mono', 'DM Mono', monospace;
+    --font-numeric: 'JetBrains Mono', 'DM Mono', monospace;
+
+    --fs-xs: 0.72rem;   --fs-sm: 0.8rem;    --fs-base: 0.95rem;
+    --fs-md: 1rem;       --fs-lg: 1.25rem;    --fs-xl: 1.5rem;
+    --fs-2xl: 2rem;      --fs-3xl: 2.25rem;
+
+    --fw-normal: 400;  --fw-medium: 500;  --fw-semibold: 600;  --fw-bold: 700;
+    --ls-tight: -0.01em;  --ls-normal: 0;  --ls-wide: 0.06em;
+    --lh-tight: 1.2;  --lh-normal: 1.6;  --lh-relaxed: 1.7;
+    --heading-transform: none;
+    --label-transform: uppercase;
+    --font-features: "kern" 1;
+    --heading-features: "liga" 1;
+
+    /* --- Shape --- */
+    --radius-sm: 8px;  --radius-md: 12px;  --radius-lg: 16px;  --radius-pill: 9999px;
+    --border-width: 1px;
+
+    /* --- Density / Spacing --- */
+    --density: 1;
+    --space-unit: 1rem;
+    --space-xs: calc(0.25 * var(--space-unit) * var(--density));
+    --space-sm: calc(0.5  * var(--space-unit) * var(--density));
+    --space-md: calc(1    * var(--space-unit) * var(--density));
+    --space-lg: calc(1.5  * var(--space-unit) * var(--density));
+    --space-xl: calc(2    * var(--space-unit) * var(--density));
+    --space-2xl: calc(3   * var(--space-unit) * var(--density));
+
+    --card-padding: calc(1.25rem * var(--density));
+    --table-cell-py: calc(0.75rem * var(--density));
+    --table-cell-px: 1rem;
+    --nav-padding-y: 0.85rem;
+    --nav-padding-x: 2rem;
+    --input-padding-y: 0.6rem;
+    --input-padding-x: 0.75rem;
+
+    /* --- Layout --- */
+    --container-max: 1320px;
+    --grid-gap: var(--space-md);
+    --stats-columns: repeat(auto-fill, minmax(240px, 1fr));
+    --stats-grid-cols: 3;
+    --chart-grid: 1.4fr 1fr;
+    --budget-card-min: 280px;
+
+    /* --- Motion --- */
+    --transition-speed: 0.22s;
+    --transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* --- Scrollbar --- */
+    --scrollbar-thumb: #c4c1f5;
+    --scrollbar-track: #f5f4ff;
+
+    /* --- Selection --- */
+    --selection-bg: rgba(108, 99, 255, 0.18);
+    --selection-text: inherit;
+
+    /* --- Colors (undraw SVG palette: #6c63ff primary) --- */
+    --bg-body: #f5f4ff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f0eeff;
+    --bg-nav: #ffffff;
+    --bg-input: #f0eeff;
+    --bg-table-header: #ebe9ff;
+    --bg-table-hover: #f0eeff;
+    --bg-badge: #ebe9ff;
+
+    --border-main: #d4d0f5;
+    --border-subtle: #e5e3fa;
+    --border-badge: #cac6f0;
+
+    --text-primary: #1c1c2e;
+    --text-secondary: #4a4a6a;
+    --text-muted: #7a7a9a;
+    --text-heading: #12121e;
+
+    --accent: #6c63ff;
+    --accent-hover: #5b52f0;
+    --brand: #6c63ff;
+
+    --color-income: #059669;
+    --color-spent: #e5484d;
+    --color-stat: #6c63ff;
+
+    --btn-bg: #6c63ff;
+    --btn-hover: #5b52f0;
+    --btn-text: #ffffff;
+
+    --link-color: #6c63ff;
+    --link-hover: #5b52f0;
+
+    --alert-success-bg: #ecfdf5;
+    --alert-success-border: #059669;
+    --alert-success-text: #047857;
+    --alert-error-bg: #fff1f2;
+    --alert-error-border: #e5484d;
+    --alert-error-text: #be123c;
+
+    --nav-link-color: #4a4a6a;
+    --nav-link-hover-bg: #ebe9ff;
+    --nav-link-hover-color: #6c63ff;
+
+    --focus-ring: rgba(108, 99, 255, 0.4);
+    --focus-ring-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
+    --footer-border: #d4d0f5;
+    --footer-text: #7a7a9a;
+
+    --shadow-card: 0 1px 3px rgba(108,99,255,0.06), 0 1px 2px rgba(108,99,255,0.04);
+    --shadow-card-hover: 0 4px 12px rgba(108,99,255,0.12);
+
+    --toggle-bg: #d4d0f5;
+    --toggle-knob: #ffffff;
+}
+
+
+/* =============================================
+   2. ABACUS DARK
+   Walnut wood tones — Fraunces variable serif headings
+   Organic noise texture overlay, warm gold accents
+   ============================================= */
+[data-theme="abacus-dark"] {
+    --font-body: 'DM Sans', -apple-system, sans-serif;
+    --font-heading: 'Fraunces', Georgia, serif;
+    --font-mono: 'DM Mono', 'JetBrains Mono', monospace;
+    --font-numeric: 'DM Mono', monospace;
+
+    --fs-xs: 0.72rem;  --fs-sm: 0.8rem;   --fs-base: 0.95rem;
+    --fs-md: 1rem;      --fs-lg: 1.3rem;    --fs-xl: 1.55rem;
+    --fs-2xl: 2.1rem;   --fs-3xl: 2.5rem;
+
+    --fw-normal: 400;  --fw-medium: 500;  --fw-semibold: 600;  --fw-bold: 700;
+    --ls-tight: -0.01em; --ls-normal: 0; --ls-wide: 0.06em;
+    --lh-tight: 1.15; --lh-normal: 1.6; --lh-relaxed: 1.7;
+    --heading-transform: none;  --label-transform: uppercase;
+    --font-features: "kern" 1, "cv11" 1;
+    --heading-features: "liga" 1, "opsz" 72;
+
+    --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-pill: 9999px;
+    --border-width: 1px;
+
+    --density: 1;
+    --space-unit: 1rem;
+    --space-xs: calc(0.25 * var(--space-unit) * var(--density));
+    --space-sm: calc(0.5  * var(--space-unit) * var(--density));
+    --space-md: calc(1    * var(--space-unit) * var(--density));
+    --space-lg: calc(1.5  * var(--space-unit) * var(--density));
+    --space-xl: calc(2    * var(--space-unit) * var(--density));
+    --space-2xl: calc(3   * var(--space-unit) * var(--density));
+    --card-padding: calc(1.25rem * var(--density));
+    --table-cell-py: calc(0.75rem * var(--density));
+    --table-cell-px: 1rem;
+    --nav-padding-y: 0.85rem; --nav-padding-x: 2rem;
+    --input-padding-y: 0.6rem; --input-padding-x: 0.75rem;
+
+    --container-max: 1320px;
+    --grid-gap: var(--space-md);
+    --stats-columns: repeat(auto-fill, minmax(240px, 1fr));
+    --stats-grid-cols: 3;
+    --chart-grid: 1.4fr 1fr;
+    --budget-card-min: 280px;
+
+    --transition-speed: 0.25s;
+    --transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+
+    --scrollbar-thumb: #4a3622;
+    --scrollbar-track: #1a1510;
+
+    --selection-bg: rgba(233, 196, 106, 0.25);
+    --selection-text: #f0e6d6;
+
+    --bg-body: #1a1510; --bg-card: #261e14; --bg-card-hover: #2e2318;
+    --bg-nav: #261e14; --bg-input: #1a1510;
+    --bg-table-header: #2e2318; --bg-table-hover: #2e2318; --bg-badge: #332818;
+    --border-main: #3d2e1e; --border-subtle: #332818; --border-badge: #4a3622;
+    --text-primary: #e8e0d4; --text-secondary: #c4a882; --text-muted: #a08c72; --text-heading: #f0e6d6;
+    --accent: #e9c46a; --accent-hover: #f0d48a; --brand: #e9c46a;
+    --color-income: #6dba75; --color-spent: #e8667a; --color-stat: #e9c46a;
+    --btn-bg: #457b9d; --btn-hover: #5294b5; --btn-text: #ffffff;
+    --link-color: #e9c46a; --link-hover: #f0d48a;
+    --alert-success-bg: #1a2e1a; --alert-success-border: #588157; --alert-success-text: #7dab7d;
+    --alert-error-bg: #2e1a1a; --alert-error-border: #d1495b; --alert-error-text: #e07080;
+    --nav-link-color: #c4a882; --nav-link-hover-bg: #3d2e1e; --nav-link-hover-color: #e9c46a;
+    --focus-ring: rgba(233, 196, 106, 0.4);
+    --focus-ring-shadow: 0 0 0 3px rgba(233, 196, 106, 0.15);
+    --footer-border: #3d2e1e; --footer-text: #6b5a45;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-card-hover: 0 4px 16px rgba(0,0,0,0.3);
+    --toggle-bg: #3d2e1e; --toggle-knob: #e9c46a;
+}
+
+
+/* =============================================
+   3. MERCURY — Clean, professional banking
+   Inter everything, generous whitespace, subtle blues
+   Airy 1140px container, softer larger radius
+   ============================================= */
+[data-theme="mercury"] {
+    --font-body: 'Inter', -apple-system, sans-serif;
+    --font-heading: 'Inter', -apple-system, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+    --font-numeric: 'IBM Plex Mono', monospace;
+
+    --fs-xs: 0.7rem;   --fs-sm: 0.78rem;  --fs-base: 0.9375rem;
+    --fs-md: 1rem;      --fs-lg: 1.2rem;    --fs-xl: 1.45rem;
+    --fs-2xl: 1.75rem;  --fs-3xl: 2rem;
+
+    --fw-normal: 400;  --fw-medium: 500;  --fw-semibold: 600;  --fw-bold: 700;
+    --ls-tight: -0.025em; --ls-normal: -0.01em; --ls-wide: 0.08em;
+    --lh-tight: 1.15; --lh-normal: 1.55; --lh-relaxed: 1.65;
+    --heading-transform: none;  --label-transform: uppercase;
+    --font-features: "kern" 1, "cv05" 1;
+    --heading-features: "kern" 1;
+
+    --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-pill: 9999px;
+    --border-width: 1px;
+
+    --density: 1.05;
+    --space-unit: 1rem;
+    --space-xs: calc(0.25 * var(--space-unit) * var(--density));
+    --space-sm: calc(0.5  * var(--space-unit) * var(--density));
+    --space-md: calc(1    * var(--space-unit) * var(--density));
+    --space-lg: calc(1.5  * var(--space-unit) * var(--density));
+    --space-xl: calc(2    * var(--space-unit) * var(--density));
+    --space-2xl: calc(3   * var(--space-unit) * var(--density));
+    --card-padding: calc(1.35rem * var(--density));
+    --table-cell-py: calc(0.8rem * var(--density));
+    --table-cell-px: 1.1rem;
+    --nav-padding-y: 0.9rem; --nav-padding-x: 2.5rem;
+    --input-padding-y: 0.65rem; --input-padding-x: 0.85rem;
+
+    --container-max: 1320px;
+    --grid-gap: calc(var(--space-md) * 1.15);
+    --stats-columns: repeat(auto-fill, minmax(250px, 1fr));
+    --stats-grid-cols: 4;
+    --chart-grid: 1.4fr 1fr;
+    --budget-card-min: 280px;
+
+    --transition-speed: 0.18s;
+    --transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+
+    --scrollbar-thumb: #c8cdd5;
+    --scrollbar-track: #f8f9fb;
+
+    --selection-bg: rgba(21, 88, 188, 0.15);
+    --selection-text: inherit;
+
+    --bg-body: #f8f9fb; --bg-card: #ffffff; --bg-card-hover: #f5f6f8;
+    --bg-nav: #ffffff; --bg-input: #f5f6f8;
+    --bg-table-header: #f0f2f5; --bg-table-hover: #f8f9fb; --bg-badge: #eef1f5;
+    --border-main: #e2e6ec; --border-subtle: #edf0f4; --border-badge: #d8dde5;
+    --text-primary: #1a1d23; --text-secondary: #5a6070; --text-muted: #8891a0; --text-heading: #0d0f13;
+    --accent: #1558bc; --accent-hover: #0b4aa2; --brand: #1558bc;
+    --color-income: #0d7c3f; --color-spent: #d12b2b; --color-stat: #1558bc;
+    --btn-bg: #1558bc; --btn-hover: #0b4aa2; --btn-text: #ffffff;
+    --link-color: #1558bc; --link-hover: #0b4aa2;
+    --alert-success-bg: #ecf7f0; --alert-success-border: #0d7c3f; --alert-success-text: #0d7c3f;
+    --alert-error-bg: #fdf0f0; --alert-error-border: #d12b2b; --alert-error-text: #d12b2b;
+    --nav-link-color: #5a6070; --nav-link-hover-bg: #f0f2f5; --nav-link-hover-color: #1558bc;
+    --focus-ring: rgba(21, 88, 188, 0.4);
+    --focus-ring-shadow: 0 0 0 3px rgba(21, 88, 188, 0.12);
+    --footer-border: #e2e6ec; --footer-text: #8891a0;
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+    --shadow-card-hover: 0 8px 24px rgba(0,0,0,0.06);
+    --toggle-bg: #e2e6ec; --toggle-knob: #ffffff;
+}
+
+
+/* =============================================
+   4. STRIPE — Developer-focused, data-dense
+   System fonts, purple accents, dark nav, tight grid
+   14px base, underline tabs, compact 4-col stats
+   ============================================= */
+[data-theme="stripe"] {
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-heading: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+    --font-numeric: 'JetBrains Mono', monospace;
+
+    --fs-xs: 0.7rem;   --fs-sm: 0.78rem;  --fs-base: 0.875rem;
+    --fs-md: 0.9375rem;  --fs-lg: 1.1rem;   --fs-xl: 1.3rem;
+    --fs-2xl: 1.5rem;   --fs-3xl: 1.75rem;
+
+    --fw-normal: 400;  --fw-medium: 500;  --fw-semibold: 600;  --fw-bold: 700;
+    --ls-tight: -0.02em; --ls-normal: -0.01em; --ls-wide: 0.05em;
+    --lh-tight: 1.15; --lh-normal: 1.5; --lh-relaxed: 1.6;
+    --heading-transform: none;  --label-transform: uppercase;
+    --font-features: "kern" 1;
+    --heading-features: "kern" 1;
+
+    --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-pill: 9999px;
+    --border-width: 1px;
+
+    --density: 0.88;
+    --space-unit: 1rem;
+    --space-xs: calc(0.25 * var(--space-unit) * var(--density));
+    --space-sm: calc(0.5  * var(--space-unit) * var(--density));
+    --space-md: calc(1    * var(--space-unit) * var(--density));
+    --space-lg: calc(1.5  * var(--space-unit) * var(--density));
+    --space-xl: calc(2    * var(--space-unit) * var(--density));
+    --space-2xl: calc(3   * var(--space-unit) * var(--density));
+    --card-padding: calc(1.1rem * var(--density));
+    --table-cell-py: calc(0.6rem * var(--density));
+    --table-cell-px: 0.85rem;
+    --nav-padding-y: 0.7rem; --nav-padding-x: 1.75rem;
+    --input-padding-y: 0.5rem; --input-padding-x: 0.65rem;
+
+    --container-max: 1440px;
+    --grid-gap: calc(var(--space-md) * 0.8);
+    --stats-columns: repeat(auto-fill, minmax(200px, 1fr));
+    --stats-grid-cols: 4;
+    --chart-grid: 1.4fr 1fr;
+    --budget-card-min: 240px;
+
+    --transition-speed: 0.15s;
+    --transition-easing: ease;
+
+    --scrollbar-thumb: #c8cdd5;
+    --scrollbar-track: #f6f8fa;
+
+    --selection-bg: rgba(99, 91, 255, 0.15);
+    --selection-text: inherit;
+
+    --bg-body: #f6f8fa; --bg-card: #ffffff; --bg-card-hover: #f9fafb;
+    --bg-nav: #0a2540; --bg-input: #f6f8fa;
+    --bg-table-header: #f0f3f7; --bg-table-hover: #f6f8fa; --bg-badge: #eff2f7;
+    --border-main: #e3e8ee; --border-subtle: #edf1f7; --border-badge: #d4dae3;
+    --text-primary: #0a2540; --text-secondary: #425466; --text-muted: #8792a2; --text-heading: #0a2540;
+    --accent: #635bff; --accent-hover: #5048d9; --brand: #635bff;
+    --color-income: #0cad56; --color-spent: #e25950; --color-stat: #635bff;
+    --btn-bg: #635bff; --btn-hover: #5048d9; --btn-text: #ffffff;
+    --link-color: #635bff; --link-hover: #5048d9;
+    --alert-success-bg: #eafaf0; --alert-success-border: #0cad56; --alert-success-text: #0cad56;
+    --alert-error-bg: #fef0ef; --alert-error-border: #e25950; --alert-error-text: #e25950;
+    --nav-link-color: #adbdcc; --nav-link-hover-bg: rgba(255,255,255,0.08); --nav-link-hover-color: #ffffff;
+    --focus-ring: rgba(99, 91, 255, 0.4);
+    --focus-ring-shadow: 0 0 0 3px rgba(99, 91, 255, 0.15);
+    --footer-border: #e3e8ee; --footer-text: #8792a2;
+    --shadow-card: 0 2px 5px rgba(50,50,93,0.1), 0 1px 2px rgba(0,0,0,0.08);
+    --shadow-card-hover: 0 7px 14px rgba(50,50,93,0.1), 0 3px 6px rgba(0,0,0,0.08);
+    --toggle-bg: rgba(255,255,255,0.15); --toggle-knob: #ffffff;
+}
+
+
+/* =============================================
+   5. APPLE — Minimal, frosted glass
+   System fonts, huge radius, glassmorphism, spacious
+   2-col stats, large cards, slow smooth transitions
+   ============================================= */
+[data-theme="apple"] {
+    --font-body: -apple-system, 'SF Pro Display', BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-heading: -apple-system, 'SF Pro Display', BlinkMacSystemFont, sans-serif;
+    --font-mono: 'SF Mono', 'Menlo', monospace;
+    --font-numeric: -apple-system, 'SF Pro Display', sans-serif;
+
+    --fs-xs: 0.72rem;  --fs-sm: 0.8rem;   --fs-base: 1rem;
+    --fs-md: 1.05rem;   --fs-lg: 1.25rem;   --fs-xl: 1.55rem;
+    --fs-2xl: 2.25rem;  --fs-3xl: 2.75rem;
+
+    --fw-normal: 400;  --fw-medium: 500;  --fw-semibold: 600;  --fw-bold: 700;
+    --ls-tight: -0.04em; --ls-normal: -0.01em; --ls-wide: 0.04em;
+    --lh-tight: 1.1; --lh-normal: 1.5; --lh-relaxed: 1.6;
+    --heading-transform: none;  --label-transform: uppercase;
+    --font-features: "kern" 1;
+    --heading-features: "kern" 1;
+
+    --radius-sm: 12px; --radius-md: 16px; --radius-lg: 22px; --radius-pill: 9999px;
+    --border-width: 1px;
+
+    --density: 1.15;
+    --space-unit: 1rem;
+    --space-xs: calc(0.25 * var(--space-unit) * var(--density));
+    --space-sm: calc(0.5  * var(--space-unit) * var(--density));
+    --space-md: calc(1    * var(--space-unit) * var(--density));
+    --space-lg: calc(1.5  * var(--space-unit) * var(--density));
+    --space-xl: calc(2    * var(--space-unit) * var(--density));
+    --space-2xl: calc(3   * var(--space-unit) * var(--density));
+    --card-padding: calc(1.75rem * var(--density));
+    --table-cell-py: calc(0.85rem * var(--density));
+    --table-cell-px: 1.15rem;
+    --nav-padding-y: 0.8rem; --nav-padding-x: 2.25rem;
+    --input-padding-y: 0.7rem; --input-padding-x: 0.9rem;
+
+    --container-max: 1160px;
+    --grid-gap: calc(var(--space-md) * 1.2);
+    --stats-columns: repeat(auto-fill, minmax(300px, 1fr));
+    --stats-grid-cols: 2;
+    --chart-grid: 1fr 1fr;
+    --budget-card-min: 320px;
+
+    --transition-speed: 0.4s;
+    --transition-easing: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+    --scrollbar-thumb: rgba(0,0,0,0.2);
+    --scrollbar-track: transparent;
+
+    --selection-bg: rgba(0, 113, 227, 0.2);
+    --selection-text: inherit;
+
+    --bg-body: #f5f5f7; --bg-card: rgba(255,255,255,0.72); --bg-card-hover: rgba(255,255,255,0.88);
+    --bg-nav: rgba(255,255,255,0.72); --bg-input: rgba(255,255,255,0.6);
+    --bg-table-header: rgba(0,0,0,0.03); --bg-table-hover: rgba(0,0,0,0.02); --bg-badge: rgba(0,0,0,0.05);
+    --border-main: rgba(0,0,0,0.08); --border-subtle: rgba(0,0,0,0.05); --border-badge: rgba(0,0,0,0.06);
+    --text-primary: #1d1d1f; --text-secondary: #6e6e73; --text-muted: #98989f; --text-heading: #000000;
+    --accent: #0071e3; --accent-hover: #0060c0; --brand: #0071e3;
+    --color-income: #28a745; --color-spent: #ff3b30; --color-stat: #1d1d1f;
+    --btn-bg: #0071e3; --btn-hover: #0060c0; --btn-text: #ffffff;
+    --link-color: #0071e3; --link-hover: #0060c0;
+    --alert-success-bg: #f0faf3; --alert-success-border: #28a745; --alert-success-text: #28a745;
+    --alert-error-bg: #fff5f5; --alert-error-border: #ff3b30; --alert-error-text: #ff3b30;
+    --nav-link-color: #6e6e73; --nav-link-hover-bg: rgba(0,0,0,0.04); --nav-link-hover-color: #0071e3;
+    --focus-ring: rgba(0, 113, 227, 0.4);
+    --focus-ring-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
+    --footer-border: rgba(0,0,0,0.06); --footer-text: #98989f;
+    --shadow-card: 0 2px 8px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03);
+    --shadow-card-hover: 0 8px 30px rgba(0,0,0,0.08);
+    --toggle-bg: rgba(0,0,0,0.08); --toggle-knob: #ffffff;
+}
+
+
+/* =============================================
+   6. NOTION — Editorial, warm serif body
+   Instrument Serif headings + Source Serif 4 body
+   Flat, minimal shadow, narrow 900px reader width
+   ============================================= */
+[data-theme="notion"] {
+    --font-body: 'Source Serif 4', 'Charter', 'Georgia', serif;
+    --font-heading: 'Instrument Serif', 'Georgia', serif;
+    --font-mono: 'IBM Plex Mono', 'SFMono-Regular', monospace;
+    --font-numeric: 'Inter', -apple-system, sans-serif;
+
+    --fs-xs: 0.72rem;  --fs-sm: 0.82rem;  --fs-base: 1.0625rem;
+    --fs-md: 1.1rem;    --fs-lg: 1.25rem;   --fs-xl: 1.5rem;
+    --fs-2xl: 2rem;     --fs-3xl: 2.5rem;
+
+    --fw-normal: 400;  --fw-medium: 500;  --fw-semibold: 600;  --fw-bold: 700;
+    --ls-tight: -0.01em; --ls-normal: 0; --ls-wide: 0.04em;
+    --lh-tight: 1.2; --lh-normal: 1.7; --lh-relaxed: 1.8;
+    --heading-transform: none;  --label-transform: uppercase;
+    --font-features: "kern" 1;
+    --heading-features: "liga" 1;
+
+    --radius-sm: 3px; --radius-md: 5px; --radius-lg: 8px; --radius-pill: 9999px;
+    --border-width: 1px;
+
+    --density: 1;
+    --space-unit: 1rem;
+    --space-xs: calc(0.25 * var(--space-unit) * var(--density));
+    --space-sm: calc(0.5  * var(--space-unit) * var(--density));
+    --space-md: calc(1    * var(--space-unit) * var(--density));
+    --space-lg: calc(1.5  * var(--space-unit) * var(--density));
+    --space-xl: calc(2    * var(--space-unit) * var(--density));
+    --space-2xl: calc(3   * var(--space-unit) * var(--density));
+    --card-padding: calc(1.25rem * var(--density));
+    --table-cell-py: calc(0.7rem * var(--density));
+    --table-cell-px: 1rem;
+    --nav-padding-y: 0.6rem; --nav-padding-x: 1.25rem;
+    --input-padding-y: 0.5rem; --input-padding-x: 0.65rem;
+
+    --container-max: 1040px;
+    --grid-gap: var(--space-md);
+    --stats-columns: repeat(auto-fill, minmax(200px, 1fr));
+    --stats-grid-cols: 4;
+    --chart-grid: 1fr 1fr;
+    --budget-card-min: 260px;
+
+    --transition-speed: 0.1s;
+    --transition-easing: ease;
+
+    --scrollbar-thumb: #d8d5d0;
+    --scrollbar-track: #ffffff;
+
+    --selection-bg: rgba(46, 170, 220, 0.2);
+    --selection-text: inherit;
+
+    --bg-body: #ffffff; --bg-card: #ffffff; --bg-card-hover: #fafafa;
+    --bg-nav: #fbfbfa; --bg-input: #f7f6f3;
+    --bg-table-header: #f7f6f3; --bg-table-hover: #fafaf8; --bg-badge: #f1eeea;
+    --border-main: #e8e5e0; --border-subtle: #f0ede8; --border-badge: #e0dbd4;
+    --text-primary: #37352f; --text-secondary: #787774; --text-muted: #9b9a97; --text-heading: #37352f;
+    --accent: #2eaadc; --accent-hover: #2595c0; --brand: #37352f;
+    --color-income: #0f7b0f; --color-spent: #e03e3e; --color-stat: #37352f;
+    --btn-bg: #37352f; --btn-hover: #2b2926; --btn-text: #ffffff;
+    --link-color: #37352f; --link-hover: #2eaadc;
+    --alert-success-bg: #f0faf0; --alert-success-border: #0f7b0f; --alert-success-text: #0f7b0f;
+    --alert-error-bg: #fdf2f2; --alert-error-border: #e03e3e; --alert-error-text: #e03e3e;
+    --nav-link-color: #787774; --nav-link-hover-bg: transparent; --nav-link-hover-color: #37352f;
+    --focus-ring: rgba(46, 170, 220, 0.4);
+    --focus-ring-shadow: 0 0 0 3px rgba(46, 170, 220, 0.15);
+    --footer-border: #e8e5e0; --footer-text: #9b9a97;
+    --shadow-card: none;
+    --shadow-card-hover: 0 1px 4px rgba(55,53,47,0.06);
+    --toggle-bg: #e8e5e0; --toggle-knob: #ffffff;
+}
+
+
+/* =============================================
+   7. LINEAR — Dark power-user, violet accent
+   Inter tight, compact, glow-on-hover, snappy
+   Wider 1200px container, small dense cards
+   ============================================= */
+[data-theme="linear"] {
+    --font-body: 'Inter', -apple-system, sans-serif;
+    --font-heading: 'Inter', -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-numeric: 'JetBrains Mono', monospace;
+
+    --fs-xs: 0.68rem;  --fs-sm: 0.76rem;  --fs-base: 0.875rem;
+    --fs-md: 0.9375rem;  --fs-lg: 1.08rem;   --fs-xl: 1.28rem;
+    --fs-2xl: 1.5rem;   --fs-3xl: 1.75rem;
+
+    --fw-normal: 400;  --fw-medium: 500;  --fw-semibold: 600;  --fw-bold: 600;
+    --ls-tight: -0.03em; --ls-normal: -0.015em; --ls-wide: 0.06em;
+    --lh-tight: 1.1; --lh-normal: 1.4; --lh-relaxed: 1.5;
+    --heading-transform: none;  --label-transform: uppercase;
+    --font-features: "kern" 1, "ss02" 1, "cv05" 1;
+    --heading-features: "kern" 1;
+
+    --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-pill: 9999px;
+    --border-width: 1px;
+
+    --density: 0.82;
+    --space-unit: 1rem;
+    --space-xs: calc(0.25 * var(--space-unit) * var(--density));
+    --space-sm: calc(0.5  * var(--space-unit) * var(--density));
+    --space-md: calc(1    * var(--space-unit) * var(--density));
+    --space-lg: calc(1.5  * var(--space-unit) * var(--density));
+    --space-xl: calc(2    * var(--space-unit) * var(--density));
+    --space-2xl: calc(3   * var(--space-unit) * var(--density));
+    --card-padding: calc(0.95rem * var(--density));
+    --table-cell-py: calc(0.5rem * var(--density));
+    --table-cell-px: 0.75rem;
+    --nav-padding-y: 0.55rem; --nav-padding-x: 1.25rem;
+    --input-padding-y: 0.4rem; --input-padding-x: 0.55rem;
+
+    --container-max: 1600px;
+    --grid-gap: calc(var(--space-md) * 0.7);
+    --stats-columns: repeat(auto-fill, minmax(180px, 1fr));
+    --stats-grid-cols: 4;
+    --chart-grid: 1.4fr 1fr;
+    --budget-card-min: 220px;
+
+    --transition-speed: 0.1s;
+    --transition-easing: ease;
+
+    --scrollbar-thumb: #3a3a4a;
+    --scrollbar-track: #101012;
+
+    --selection-bg: rgba(124, 92, 255, 0.3);
+    --selection-text: #ffffff;
+
+    --bg-body: #101012; --bg-card: #1b1b1f; --bg-card-hover: #222228;
+    --bg-nav: #18181c; --bg-input: #1b1b1f;
+    --bg-table-header: #1f1f24; --bg-table-hover: #222228; --bg-badge: #2a2a32;
+    --border-main: #2e2e38; --border-subtle: #252530; --border-badge: #38384a;
+    --text-primary: #e8e8ed; --text-secondary: #9898a6; --text-muted: #6b6b80; --text-heading: #ffffff;
+    --accent: #7c5cff; --accent-hover: #9b7fff; --brand: #7c5cff;
+    --color-income: #4ade80; --color-spent: #f87171; --color-stat: #e8e8ed;
+    --btn-bg: #7c5cff; --btn-hover: #6a4edc; --btn-text: #ffffff;
+    --link-color: #7c5cff; --link-hover: #9b7fff;
+    --alert-success-bg: #0d2818; --alert-success-border: #4ade80; --alert-success-text: #4ade80;
+    --alert-error-bg: #2a1215; --alert-error-border: #f87171; --alert-error-text: #f87171;
+    --nav-link-color: #6b6b80; --nav-link-hover-bg: #222228; --nav-link-hover-color: #e8e8ed;
+    --focus-ring: rgba(124, 92, 255, 0.5);
+    --focus-ring-shadow: 0 0 0 3px rgba(124, 92, 255, 0.2), 0 0 15px rgba(124, 92, 255, 0.15);
+    --footer-border: #2e2e38; --footer-text: #4a4a58;
+    --shadow-card: none;
+    --shadow-card-hover: 0 0 0 1px rgba(124,92,255,0.25), 0 0 20px rgba(124,92,255,0.08);
+    --toggle-bg: #2e2e38; --toggle-knob: #7c5cff;
+}
+
+
+/* =============================================
+   8. BLOOMBERG — Terminal, ultra-dense
+   IBM Plex Mono everything, 0px radius, 0ms transitions
+   Full-width 1400px, 13px base, 6-col grid
+   ============================================= */
+[data-theme="bloomberg"] {
+    --font-body: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+    --font-heading: 'IBM Plex Mono', monospace;
+    --font-mono: 'IBM Plex Mono', monospace;
+    --font-numeric: 'IBM Plex Mono', monospace;
+
+    --fs-xs: 0.65rem;  --fs-sm: 0.72rem;  --fs-base: 0.8125rem;
+    --fs-md: 0.85rem;   --fs-lg: 0.95rem;   --fs-xl: 1.1rem;
+    --fs-2xl: 1.25rem;  --fs-3xl: 1.4rem;
+
+    --fw-normal: 400;  --fw-medium: 500;  --fw-semibold: 500;  --fw-bold: 700;
+    --ls-tight: -0.02em; --ls-normal: -0.01em; --ls-wide: 0.04em;
+    --lh-tight: 1.1; --lh-normal: 1.35; --lh-relaxed: 1.45;
+    --heading-transform: uppercase;
+    --label-transform: uppercase;
+    --font-features: "tnum" 1, "lnum" 1, "zero" 1;
+    --heading-features: "tnum" 1;
+
+    --radius-sm: 0px; --radius-md: 0px; --radius-lg: 2px; --radius-pill: 2px;
+    --border-width: 1px;
+
+    --density: 0.65;
+    --space-unit: 1rem;
+    --space-xs: calc(0.25 * var(--space-unit) * var(--density));
+    --space-sm: calc(0.5  * var(--space-unit) * var(--density));
+    --space-md: calc(1    * var(--space-unit) * var(--density));
+    --space-lg: calc(1.5  * var(--space-unit) * var(--density));
+    --space-xl: calc(2    * var(--space-unit) * var(--density));
+    --space-2xl: calc(3   * var(--space-unit) * var(--density));
+    --card-padding: calc(0.65rem * var(--density));
+    --table-cell-py: calc(0.3rem * var(--density));
+    --table-cell-px: 0.5rem;
+    --nav-padding-y: 0.35rem; --nav-padding-x: 0.75rem;
+    --input-padding-y: 0.25rem; --input-padding-x: 0.4rem;
+
+    --container-max: 1600px;
+    --grid-gap: 2px;
+    --stats-columns: repeat(auto-fill, minmax(140px, 1fr));
+    --stats-grid-cols: 4;
+    --chart-grid: 1.4fr 1fr;
+    --budget-card-min: 180px;
+
+    --transition-speed: 0s;
+    --transition-easing: linear;
+
+    --scrollbar-thumb: #ff9933;
+    --scrollbar-track: #000000;
+
+    --selection-bg: rgba(255, 153, 51, 0.3);
+    --selection-text: #ffffff;
+
+    --bg-body: #000000; --bg-card: #0a0a0a; --bg-card-hover: #141414;
+    --bg-nav: #0a0a0a; --bg-input: #0a0a0a;
+    --bg-table-header: #0f0f0f; --bg-table-hover: #141414; --bg-badge: #1a1a1a;
+    --border-main: #2a2a2a; --border-subtle: #1f1f1f; --border-badge: #333333;
+    --text-primary: #ff9933; --text-secondary: #cc7a29; --text-muted: #666666; --text-heading: #ff9933;
+    --accent: #ff9933; --accent-hover: #ffad5c; --brand: #ff9933;
+    --color-income: #00ff00; --color-spent: #ff4444; --color-stat: #ff9933;
+    --btn-bg: #ff9933; --btn-hover: #ffad5c; --btn-text: #000000;
+    --link-color: #ff9933; --link-hover: #ffad5c;
+    --alert-success-bg: #001a00; --alert-success-border: #00ff00; --alert-success-text: #00ff00;
+    --alert-error-bg: #1a0000; --alert-error-border: #ff4444; --alert-error-text: #ff4444;
+    --nav-link-color: #808080; --nav-link-hover-bg: #141414; --nav-link-hover-color: #ff9933;
+    --focus-ring: #ff9933;
+    --focus-ring-shadow: 0 0 0 1px #ff9933;
+    --footer-border: #2a2a2a; --footer-text: #555555;
+    --shadow-card: none;
+    --shadow-card-hover: 0 0 0 1px #ff9933;
+    --toggle-bg: #2a2a2a; --toggle-knob: #ff9933;
+}
+
+
+/* =============================================
+   9. AMEX PLATINUM — Luxury dark
+   Playfair Display headings, light Inter body
+   Gold gradient accents, generous 1060px, slow transitions
+   ============================================= */
+[data-theme="amex-platinum"] {
+    --font-body: 'Inter', -apple-system, sans-serif;
+    --font-heading: 'Playfair Display', Georgia, serif;
+    --font-mono: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+    --font-numeric: 'Inter', -apple-system, sans-serif;
+
+    --fs-xs: 0.6875rem;  --fs-sm: 0.78rem;  --fs-base: 0.9375rem;
+    --fs-md: 1rem;       --fs-lg: 1.3rem;    --fs-xl: 1.65rem;
+    --fs-2xl: 2.25rem;   --fs-3xl: 2.75rem;
+
+    --fw-normal: 300;  --fw-medium: 400;  --fw-semibold: 500;  --fw-bold: 600;
+    --ls-tight: -0.02em; --ls-normal: 0.01em; --ls-wide: 0.1em;
+    --lh-tight: 1.15; --lh-normal: 1.6; --lh-relaxed: 1.7;
+    --heading-transform: none;  --label-transform: uppercase;
+    --font-features: "kern" 1;
+    --heading-features: "liga" 1, "dlig" 1;
+
+    --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px; --radius-pill: 9999px;
+    --border-width: 1px;
+
+    --density: 1.18;
+    --space-unit: 1rem;
+    --space-xs: calc(0.25 * var(--space-unit) * var(--density));
+    --space-sm: calc(0.5  * var(--space-unit) * var(--density));
+    --space-md: calc(1    * var(--space-unit) * var(--density));
+    --space-lg: calc(1.5  * var(--space-unit) * var(--density));
+    --space-xl: calc(2    * var(--space-unit) * var(--density));
+    --space-2xl: calc(3   * var(--space-unit) * var(--density));
+    --card-padding: calc(1.75rem * var(--density));
+    --table-cell-py: calc(0.9rem * var(--density));
+    --table-cell-px: 1.25rem;
+    --nav-padding-y: 1rem; --nav-padding-x: 2.5rem;
+    --input-padding-y: 0.7rem; --input-padding-x: 0.9rem;
+
+    --container-max: 1280px;
+    --grid-gap: calc(var(--space-md) * 1.15);
+    --stats-columns: repeat(auto-fill, minmax(280px, 1fr));
+    --stats-grid-cols: 2;
+    --chart-grid: 1fr 1fr;
+    --budget-card-min: 320px;
+
+    --transition-speed: 0.5s;
+    --transition-easing: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+    --scrollbar-thumb: #3a3530;
+    --scrollbar-track: #0c0c10;
+
+    --selection-bg: rgba(201, 169, 110, 0.25);
+    --selection-text: #f5f0e8;
+
+    --bg-body: #0c0c10; --bg-card: #16161c; --bg-card-hover: #1e1e26;
+    --bg-nav: #12121a; --bg-input: #16161c;
+    --bg-table-header: #1a1a22; --bg-table-hover: #1e1e26; --bg-badge: #222230;
+    --border-main: #2c2c3a; --border-subtle: #24242e; --border-badge: #3a3a4a;
+    --text-primary: #eae6df; --text-secondary: #a8a095; --text-muted: #706860; --text-heading: #f5f0e8;
+    --accent: #c9a96e; --accent-hover: #dfc08a; --brand: #c9a96e;
+    --color-income: #6dba75; --color-spent: #e06b6b; --color-stat: #c9a96e;
+    --btn-bg: #c9a96e; --btn-hover: #b89658; --btn-text: #0c0c10;
+    --link-color: #c9a96e; --link-hover: #dfc08a;
+    --alert-success-bg: #0d1f12; --alert-success-border: #6dba75; --alert-success-text: #6dba75;
+    --alert-error-bg: #1f0d0d; --alert-error-border: #e06b6b; --alert-error-text: #e06b6b;
+    --nav-link-color: #706860; --nav-link-hover-bg: #1e1e26; --nav-link-hover-color: #c9a96e;
+    --focus-ring: rgba(201, 169, 110, 0.4);
+    --focus-ring-shadow: 0 0 0 3px rgba(201, 169, 110, 0.15);
+    --footer-border: #2c2c3a; --footer-text: #4a4540;
+    --shadow-card: 0 1px 4px rgba(0,0,0,0.3);
+    --shadow-card-hover: 0 8px 32px rgba(201,169,110,0.08);
+    --toggle-bg: #2c2c3a; --toggle-knob: #c9a96e;
+}
+
+
+/* =============================================
+   10. RADIX LIGHT — Blueprint reference palette
+   Inter + JetBrains Mono, Radix Slate neutrals
+   Indigo accent · green income · red spent
+   Exact hex values from blueprint spec (Radix Colors MIT)
+   ============================================= */
+[data-theme="radix-light"] {
+    /* --- Typography --- */
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-heading: 'Inter', -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+    --font-numeric: 'JetBrains Mono', monospace;
+
+    --fs-xs: 0.75rem;   --fs-sm: 0.8125rem; --fs-base: 0.875rem;
+    --fs-md: 1rem;       --fs-lg: 1.25rem;   --fs-xl: 1.5rem;
+    --fs-2xl: 2rem;      --fs-3xl: 2.25rem;
+
+    --fw-normal: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700;
+    --ls-tight: -0.025em; --ls-normal: -0.011em; --ls-wide: 0.06em;
+    --lh-tight: 1.25; --lh-normal: 1.5; --lh-relaxed: 1.625;
+    --heading-transform: none; --label-transform: uppercase;
+    --font-features: "kern" 1, "cv05" 1, "ss01" 1;
+    --heading-features: "kern" 1;
+
+    /* --- Shape (blueprint: inputs/buttons 8, cards 12, modals 16) --- */
+    --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-pill: 9999px;
+    --border-width: 1px;
+
+    /* --- Density / Spacing (4px base) --- */
+    --density: 1;
+    --space-unit: 1rem;
+    --space-xs: calc(0.25 * var(--space-unit) * var(--density));
+    --space-sm: calc(0.5  * var(--space-unit) * var(--density));
+    --space-md: calc(1    * var(--space-unit) * var(--density));
+    --space-lg: calc(1.5  * var(--space-unit) * var(--density));
+    --space-xl: calc(2    * var(--space-unit) * var(--density));
+    --space-2xl: calc(3   * var(--space-unit) * var(--density));
+
+    --card-padding: calc(1.25rem * var(--density));
+    --table-cell-py: calc(0.75rem * var(--density));
+    --table-cell-px: 1rem;
+    --nav-padding-y: 0.85rem; --nav-padding-x: 2rem;
+    --input-padding-y: 0.6rem; --input-padding-x: 0.75rem;
+
+    /* --- Layout --- */
+    --container-max: 1320px;
+    --grid-gap: var(--space-md);
+    --stats-columns: repeat(auto-fill, minmax(240px, 1fr));
+    --stats-grid-cols: 4;
+    --chart-grid: 1.4fr 1fr;
+    --budget-card-min: 280px;
+
+    /* --- Motion --- */
+    --transition-speed: 0.18s;
+    --transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* --- Scrollbar / Selection --- */
+    --scrollbar-thumb: #c8ccd4;
+    --scrollbar-track: #fcfcfd;
+    --selection-bg: rgba(62, 99, 221, 0.15);
+    --selection-text: inherit;
+
+    /* --- Colors (Radix Slate scale, blueprint hex values) --- */
+    --bg-body: #fcfcfd;          /* slate1  */
+    --bg-card: #ffffff;
+    --bg-card-hover: #f9f9fb;    /* slate2  */
+    --bg-nav: #ffffff;
+    --bg-input: #f9f9fb;         /* slate2  */
+    --bg-table-header: #f0f0f3;  /* slate3  */
+    --bg-table-hover: #f9f9fb;
+    --bg-badge: #e8e8ed;
+
+    --border-main: #d9d9e0;      /* slate6  */
+    --border-subtle: #e8e8ed;
+    --border-badge: #d2d2da;
+
+    --text-primary: #1c2024;     /* slate12 */
+    --text-secondary: #60646c;   /* slate11 */
+    --text-muted: #8b8d98;
+    --text-heading: #1c2024;
+
+    --accent: #3e63dd;           /* Radix Indigo 9  */
+    --accent-hover: #3657c9;     /* Radix Indigo 10 */
+    --brand: #3e63dd;
+
+    --color-income: #30a46c;     /* Radix Green 9   */
+    --color-spent: #e5484d;      /* Radix Red 9 (blueprint) */
+    --color-stat: #3e63dd;
+
+    --btn-bg: #3e63dd; --btn-hover: #3657c9; --btn-text: #ffffff;
+    --link-color: #3e63dd; --link-hover: #3657c9;
+
+    --alert-success-bg: #e9f6ee; --alert-success-border: #30a46c; --alert-success-text: #18794e;
+    --alert-error-bg: #fce8e9;   --alert-error-border: #e5484d;   --alert-error-text: #ca2a30;
+
+    --nav-link-color: #60646c; --nav-link-hover-bg: #f0f0f3; --nav-link-hover-color: #3e63dd;
+
+    --focus-ring: rgba(62, 99, 221, 0.4);
+    --focus-ring-shadow: 0 0 0 3px rgba(62, 99, 221, 0.12);
+    --footer-border: #d9d9e0; --footer-text: #8b8d98;
+
+    --shadow-card: 0 1px 3px rgba(28, 32, 36, 0.04), 0 1px 2px rgba(28, 32, 36, 0.03);
+    --shadow-card-hover: 0 8px 24px rgba(28, 32, 36, 0.06);
+    --toggle-bg: #d9d9e0; --toggle-knob: #ffffff;
+}
+
+
+/* =============================================
+   11. RADIX DARK — Blueprint dark palette
+   Same Inter stack, Radix Slate dark + Indigo dark
+   Exact dark-mode hex values from blueprint spec
+   ============================================= */
+[data-theme="radix-dark"] {
+    /* --- Typography (same as Radix Light) --- */
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-heading: 'Inter', -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+    --font-numeric: 'JetBrains Mono', monospace;
+
+    --fs-xs: 0.75rem;   --fs-sm: 0.8125rem; --fs-base: 0.875rem;
+    --fs-md: 1rem;       --fs-lg: 1.25rem;   --fs-xl: 1.5rem;
+    --fs-2xl: 2rem;      --fs-3xl: 2.25rem;
+
+    --fw-normal: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700;
+    --ls-tight: -0.025em; --ls-normal: -0.011em; --ls-wide: 0.06em;
+    --lh-tight: 1.25; --lh-normal: 1.5; --lh-relaxed: 1.625;
+    --heading-transform: none; --label-transform: uppercase;
+    --font-features: "kern" 1, "cv05" 1, "ss01" 1;
+    --heading-features: "kern" 1;
+
+    /* --- Shape --- */
+    --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-pill: 9999px;
+    --border-width: 1px;
+
+    /* --- Density / Spacing --- */
+    --density: 1;
+    --space-unit: 1rem;
+    --space-xs: calc(0.25 * var(--space-unit) * var(--density));
+    --space-sm: calc(0.5  * var(--space-unit) * var(--density));
+    --space-md: calc(1    * var(--space-unit) * var(--density));
+    --space-lg: calc(1.5  * var(--space-unit) * var(--density));
+    --space-xl: calc(2    * var(--space-unit) * var(--density));
+    --space-2xl: calc(3   * var(--space-unit) * var(--density));
+
+    --card-padding: calc(1.25rem * var(--density));
+    --table-cell-py: calc(0.75rem * var(--density));
+    --table-cell-px: 1rem;
+    --nav-padding-y: 0.85rem; --nav-padding-x: 2rem;
+    --input-padding-y: 0.6rem; --input-padding-x: 0.75rem;
+
+    /* --- Layout --- */
+    --container-max: 1320px;
+    --grid-gap: var(--space-md);
+    --stats-columns: repeat(auto-fill, minmax(240px, 1fr));
+    --stats-grid-cols: 4;
+    --chart-grid: 1.4fr 1fr;
+    --budget-card-min: 280px;
+
+    /* --- Motion --- */
+    --transition-speed: 0.18s;
+    --transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* --- Scrollbar / Selection --- */
+    --scrollbar-thumb: #363a3f;  /* slate6 */
+    --scrollbar-track: #111113;
+    --selection-bg: rgba(132, 157, 255, 0.25);
+    --selection-text: #edeef0;
+
+    /* --- Colors (Radix Slate dark scale, blueprint hex values) --- */
+    --bg-body: #111113;          /* dark slate1 */
+    --bg-card: #18191b;          /* dark slate2 */
+    --bg-card-hover: #212225;    /* dark slate3 */
+    --bg-nav: #18191b;
+    --bg-input: #111113;
+    --bg-table-header: #212225;  /* dark slate3 */
+    --bg-table-hover: #26272b;
+    --bg-badge: #2a2b30;
+
+    --border-main: #363a3f;      /* dark slate6 */
+    --border-subtle: #2c2e32;
+    --border-badge: #404448;
+
+    --text-primary: #edeef0;     /* dark slate12 */
+    --text-secondary: #b0b4ba;   /* dark slate11 */
+    --text-muted: #868d96;
+    --text-heading: #edeef0;
+
+    --accent: #849dff;           /* Radix Indigo 9 dark  */
+    --accent-hover: #9fb5ff;     /* Radix Indigo 10 dark */
+    --brand: #849dff;
+
+    --color-income: #46a758;     /* Radix Green 9 dark  */
+    --color-spent: #f2555a;      /* Radix Red 9 dark    */
+    --color-stat: #849dff;
+
+    --btn-bg: #849dff; --btn-hover: #9fb5ff; --btn-text: #111113;
+    --link-color: #849dff; --link-hover: #9fb5ff;
+
+    --alert-success-bg: #0d2211; --alert-success-border: #46a758; --alert-success-text: #4cc38a;
+    --alert-error-bg: #2c0f12;   --alert-error-border: #f2555a;   --alert-error-text: #ff6369;
+
+    --nav-link-color: #868d96; --nav-link-hover-bg: #212225; --nav-link-hover-color: #849dff;
+
+    --focus-ring: rgba(132, 157, 255, 0.5);
+    --focus-ring-shadow: 0 0 0 3px rgba(132, 157, 255, 0.2);
+    --footer-border: #363a3f; --footer-text: #525866;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.35);
+    --toggle-bg: #363a3f; --toggle-knob: #849dff;
+}

@@ -20,6 +20,7 @@ from database.models import (
     initialize_database, add_account, add_transactions,
     get_all_transactions, get_all_accounts, get_all_categories,
     update_transaction_review, update_transaction_category, get_review_stats,
+    create_transaction, delete_transaction, update_transaction,
     add_rule, get_all_rules, delete_rule, toggle_rule, apply_rules_retroactively,
     set_budget, get_budgets, delete_budget, get_spending_by_category_for_month,
     get_avg_spending_by_category, get_monthly_spending_history
@@ -40,6 +41,12 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route('/')
 def index():
+    """Landing / get-started page."""
+    return render_template('landing.html')
+
+
+@app.route('/dashboard')
+def dashboard():
     accounts = get_all_accounts()
     transactions = get_all_transactions()
     review_stats = get_review_stats()
@@ -192,7 +199,7 @@ def _handle_csv_import():
     if skipped > 0:
         msg += f' ({skipped} duplicates skipped)'
     flash(msg, 'success')
-    return redirect(url_for('index'))
+    return redirect(url_for('dashboard'))
 
 
 def _parse_generic_csv(csv_text, date_col, desc_col, amount_col,
@@ -445,6 +452,58 @@ def api_spending_by_category():
         'labels': [c[0] for c in sorted_cats],
         'values': [round(c[1], 2) for c in sorted_cats]
     })
+
+
+@app.route('/api/transactions', methods=['POST'])
+def api_create_transaction():
+    """Manually add a single transaction (blueprint P0: Transaction CRUD)."""
+    data = request.get_json()
+    required = ['account_id', 'date', 'description', 'amount']
+    if not all(data.get(k) is not None for k in required):
+        return jsonify({'ok': False, 'error': 'Missing required fields'}), 400
+    try:
+        new_id = create_transaction(
+            account_id=int(data['account_id']),
+            date=data['date'],
+            description=data['description'],
+            amount=float(data['amount']),
+            category=data.get('category', 'Uncategorized'),
+            notes=data.get('notes', '')
+        )
+        return jsonify({'ok': True, 'id': new_id})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/transactions/<int:tid>', methods=['DELETE'])
+def api_delete_transaction(tid):
+    """Delete a transaction by ID."""
+    try:
+        delete_transaction(tid)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/transactions/<int:tid>', methods=['PUT'])
+def api_update_transaction(tid):
+    """Full update of a transaction."""
+    data = request.get_json()
+    required = ['date', 'description', 'amount']
+    if not all(data.get(k) is not None for k in required):
+        return jsonify({'ok': False, 'error': 'Missing required fields'}), 400
+    try:
+        update_transaction(
+            tid,
+            date=data['date'],
+            description=data['description'],
+            amount=float(data['amount']),
+            category=data.get('category', 'Uncategorized'),
+            notes=data.get('notes', '')
+        )
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @app.route('/api/monthly-summary')
