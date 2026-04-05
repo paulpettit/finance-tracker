@@ -2,6 +2,8 @@
 
 A Python/Flask web app that lets you import CSV exports from your bank and investment accounts to track net worth, spending, and investment performance over time.
 
+![Finance Tracker Demo](docs/demo.gif)
+
 ## Supported Institutions
 - Chase (checking/credit)
 - American Express
