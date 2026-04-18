@@ -25,7 +25,7 @@
 [data-theme="abacus-light"] {
     /* --- Typography --- */
     --font-body: 'Inter', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-heading: 'DM Serif Display', Georgia, serif;
+    --font-heading: 'Fraunces', Georgia, serif;
     --font-mono: 'JetBrains Mono', 'DM Mono', monospace;
     --font-numeric: 'JetBrains Mono', 'DM Mono', monospace;
 

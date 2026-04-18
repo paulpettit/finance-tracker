@@ -6,10 +6,12 @@
     <title>Finance Tracker — Take control of your money</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400,50,0;9..144,500,50,0;9..144,600,50,0;9..144,400,50,1;9..144,500,50,1;9..144,600,50,1&family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.29.0/dist/tabler-icons.min.css">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
 </head>
 <body>
@@ -18,7 +20,18 @@
     <nav class="land-nav">
         <div class="land-nav-inner">
             <a href="{{ url_for('index') }}" class="land-brand">
-                <img src="{{ url_for('static', filename='favicon-32x32.png') }}" alt="" class="land-logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="28" height="28" aria-hidden="true" class="land-logo">
+                  <line x1="24" y1="22" x2="24" y2="98" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="96" y1="22" x2="96" y2="98" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                  <line x1="24" y1="34" x2="96" y2="34" stroke="currentColor" stroke-width="1.5"/>
+                  <line x1="24" y1="54" x2="96" y2="54" stroke="currentColor" stroke-width="1.5"/>
+                  <line x1="24" y1="74" x2="96" y2="74" stroke="currentColor" stroke-width="1.5"/>
+                  <line x1="24" y1="94" x2="96" y2="94" stroke="currentColor" stroke-width="1.5"/>
+                  <circle cx="72" cy="34" r="9" fill="#3865E6"/>
+                  <circle cx="36" cy="54" r="9" fill="#E94E4E"/>
+                  <circle cx="54" cy="74" r="9" fill="#2E9D6E"/>
+                  <circle cx="90" cy="94" r="9" fill="#F2B84B"/>
+                </svg>
                 <span>Finance Tracker</span>
             </a>
             <a href="{{ url_for('dashboard') }}" class="land-cta-btn">

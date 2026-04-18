@@ -67,11 +67,14 @@ a   { color: inherit; text-decoration: none; }
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    font-weight: 600;
-    font-size: 1rem;
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: 1.05rem;
+    letter-spacing: -0.015em;
+    font-variation-settings: "opsz" 96, "SOFT" 50;
     color: var(--navy);
 }
-.land-logo { width: 28px; height: 28px; }
+.land-logo { width: 28px; height: 28px; flex-shrink: 0; }
 
 .land-cta-btn {
     display: inline-flex;

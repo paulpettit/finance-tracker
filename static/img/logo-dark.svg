@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Finance Tracker">
+  <line x1="24" y1="22" x2="24" y2="98" stroke="#F5F3EC" stroke-width="3" stroke-linecap="round"></line>
+  <line x1="96" y1="22" x2="96" y2="98" stroke="#F5F3EC" stroke-width="3" stroke-linecap="round"></line>
+  <line x1="24" y1="34" x2="96" y2="34" stroke="#F5F3EC" stroke-width="1.5"></line>
+  <line x1="24" y1="54" x2="96" y2="54" stroke="#F5F3EC" stroke-width="1.5"></line>
+  <line x1="24" y1="74" x2="96" y2="74" stroke="#F5F3EC" stroke-width="1.5"></line>
+  <line x1="24" y1="94" x2="96" y2="94" stroke="#F5F3EC" stroke-width="1.5"></line>
+  <circle cx="72" cy="34" r="9" fill="#3865E6"></circle>
+  <circle cx="36" cy="54" r="9" fill="#E94E4E"></circle>
+  <circle cx="54" cy="74" r="9" fill="#2E9D6E"></circle>
+  <circle cx="90" cy="94" r="9" fill="#F2B84B"></circle>
+</svg>

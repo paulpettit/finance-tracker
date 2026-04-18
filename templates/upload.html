@@ -4,73 +4,103 @@
 {% block content %}
 <div class="dashboard-header">
     <h1>Upload CSV</h1>
-    <p class="dashboard-subtitle">
-        {% if step == 'preview' %}Step 2: Review transactions before importing
-        {% elif step == 'map_columns' %}Step 2: Map your CSV columns
-        {% else %}Step 1: Select your file and institution
-        {% endif %}
-    </p>
+    <p class="dashboard-subtitle">Import transactions from your bank or brokerage</p>
+</div>
+
+<!-- Step strip -->
+<div class="step-strip">
+    <span class="step-chip {% if not step or step == 'upload' %}active{% endif %}">1 · Upload</span>
+    <span class="step-connector">→</span>
+    <span class="step-chip {% if step in ['preview', 'map_columns'] %}active{% endif %}">2 · Preview</span>
+    <span class="step-connector">→</span>
+    <span class="step-chip">3 · Import</span>
 </div>
 
 {% if step == 'upload' or step is not defined %}
 <!-- ============================================ -->
-<!-- STEP 1: Upload form                         -->
+<!-- STEP 1: Two-column upload layout             -->
 <!-- ============================================ -->
-<div class="upload-card">
-    <form method="POST" enctype="multipart/form-data" id="upload-form">
-        <div class="form-group">
-            <label for="institution">Institution</label>
-            <select name="institution" id="institution" required>
-                <option value="">Select your bank/brokerage...</option>
-                {% for parser_key in parsers %}
-                <option value="{{ parser_key }}">{{ parser_key.replace('_', ' ').title() }}</option>
-                {% endfor %}
-                <option value="generic_csv">📄 Other / Generic CSV</option>
-            </select>
-        </div>
+<div class="upload-layout">
 
-        <div class="form-group">
-            <label for="account_name">Account Name</label>
-            <input type="text" name="account_name" id="account_name"
-                   placeholder="e.g., Chase Main Checking, Amex Gold" required>
-        </div>
+    <!-- LEFT: Upload form -->
+    <div class="upload-main">
+        <div class="upload-card">
+            <form method="POST" enctype="multipart/form-data" id="upload-form">
+                <div class="form-group">
+                    <label for="institution">Institution</label>
+                    <select name="institution" id="institution" required>
+                        <option value="">Select your bank/brokerage...</option>
+                        {% for parser_key in parsers %}
+                        <option value="{{ parser_key }}">{{ parser_key.replace('_', ' ').title() }}</option>
+                        {% endfor %}
+                        <option value="generic_csv">📄 Other / Generic CSV</option>
+                    </select>
+                </div>
 
-        <div class="form-group">
-            <label>CSV File</label>
-            <div class="dropzone" id="dropzone">
-                <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
-                <div class="dropzone-content" id="dropzone-content">
-                    <div class="dropzone-icon">
-                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                            <rect x="8" y="6" width="32" height="36" rx="4" stroke="var(--text-muted)" stroke-width="2" fill="none"/>
-                            <path d="M18 24L24 18L30 24" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                            <line x1="24" y1="18" x2="24" y2="34" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
-                        </svg>
+                <div class="form-group">
+                    <label for="account_name">Account Name</label>
+                    <input type="text" name="account_name" id="account_name"
+                           placeholder="e.g., Chase Main Checking, Amex Gold" required>
+                </div>
+
+                <div class="form-group">
+                    <label>CSV File</label>
+                    <div class="dropzone dropzone-tall" id="dropzone">
+                        <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
+                        <div class="dropzone-content" id="dropzone-content">
+                            <div class="dropzone-icon">
+                                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                                    <rect x="8" y="6" width="32" height="36" rx="4" stroke="var(--text-muted)" stroke-width="2" fill="none"/>
+                                    <path d="M18 24L24 18L30 24" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <line x1="24" y1="18" x2="24" y2="34" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <p class="dropzone-text">Drag & drop your CSV here</p>
+                            <p class="dropzone-hint">or click to browse</p>
+                        </div>
+                        <div class="dropzone-file" id="dropzone-file" style="display:none;">
+                            <span class="file-icon">📄</span>
+                            <span class="file-name" id="file-name"></span>
+                            <button type="button" class="file-remove" id="file-remove">✕</button>
+                        </div>
                     </div>
-                    <p class="dropzone-text">Drag & drop your CSV here</p>
-                    <p class="dropzone-hint">or click to browse</p>
                 </div>
-                <div class="dropzone-file" id="dropzone-file" style="display:none;">
-                    <span class="file-icon">📄</span>
-                    <span class="file-name" id="file-name"></span>
-                    <button type="button" class="file-remove" id="file-remove">✕</button>
-                </div>
+
+                <button type="submit" class="btn-primary btn-full" id="upload-btn">Preview Import →</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- RIGHT: Help sidebar -->
+    <div class="upload-sidebar">
+
+        <!-- Security card -->
+        <div class="upload-card security-card">
+            <p style="font-weight:var(--fw-semibold);margin-bottom:4px;">🔒 Your data stays on your device</p>
+            <p style="color:var(--text-muted);font-size:var(--fs-sm);margin:0;">Files are processed locally — nothing is sent to external servers or stored in the cloud.</p>
+        </div>
+
+        <!-- Bank export guides -->
+        <div class="upload-card">
+            <h2 style="margin-bottom:var(--space-md);">How to export from your bank</h2>
+            <div class="help-section">
+                <details><summary>🏦 Chase</summary><p>Chase.com → Select account → Download icon (↓) → CSV → Select date range</p></details>
+                <details><summary>💳 American Express</summary><p>Amex → Statements & Activity → Download → CSV → Date range</p></details>
+                <details><summary>📊 Fidelity</summary><p>Fidelity → Accounts → Activity & Orders → Download → CSV</p></details>
+                <details><summary>🪙 Coinbase</summary><p>Coinbase → Profile → Taxes → Generate Report → Transaction History CSV</p></details>
+                <details><summary>🪶 Robinhood</summary><p>Robinhood → Account → Statements & History → Download CSV</p></details>
+                <details><summary>🏛️ Marcus</summary><p>Marcus → Account → Transaction History → Download → CSV</p></details>
+                <details><summary>📈 Charles Schwab</summary><p>Schwab → Accounts → History → Export → CSV</p></details>
             </div>
         </div>
 
-        <button type="submit" class="btn-primary btn-full" id="upload-btn">Preview Import →</button>
-    </form>
-</div>
+        <!-- Recent uploads placeholder -->
+        <div class="upload-card">
+            <h2 style="margin-bottom:var(--space-sm);">Recent Uploads</h2>
+            <p class="muted" style="font-size:var(--fs-sm);">Your recent imports will appear here.</p>
+        </div>
 
-<div class="help-section">
-    <h2>How to export CSVs</h2>
-    <details><summary>🏦 Chase</summary><p>Chase.com → Select account → Download icon (↓) → CSV → Select date range</p></details>
-    <details><summary>💳 American Express</summary><p>Amex → Statements & Activity → Download → CSV → Date range</p></details>
-    <details><summary>📊 Fidelity</summary><p>Fidelity → Accounts → Activity & Orders → Download → CSV</p></details>
-    <details><summary>🪙 Coinbase</summary><p>Coinbase → Profile → Taxes → Generate Report → Transaction History CSV</p></details>
-    <details><summary>🪶 Robinhood</summary><p>Robinhood → Account → Statements & History → Download CSV</p></details>
-    <details><summary>🏛️ Marcus</summary><p>Marcus → Account → Transaction History → Download → CSV</p></details>
-    <details><summary>📈 Charles Schwab</summary><p>Schwab → Accounts → History → Export → CSV</p></details>
+    </div>
 </div>
 
 {% elif step == 'preview' %}

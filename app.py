@@ -397,6 +397,12 @@ def budget():
             })
     suggestions.sort(key=lambda x: -x['avg'])
 
+    import calendar as _cal
+    from datetime import date as _date
+    _y, _m = int(selected_month[:4]), int(selected_month[5:7])
+    _last = _cal.monthrange(_y, _m)[1]
+    days_remaining = max(0, (_date(_y, _m, _last) - _date.today()).days)
+
     return render_template('budget.html',
                            budget_data=budget_data,
                            categories=categories,
@@ -406,7 +412,8 @@ def budget():
                            total_spent=total_spent,
                            has_budgets=has_budgets,
                            suggestions=suggestions,
-                           avg_spending=avg_spending)
+                           avg_spending=avg_spending,
+                           days_remaining=days_remaining)
 
 
 # ==============================================================

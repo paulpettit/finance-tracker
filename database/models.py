@@ -95,6 +95,13 @@ def initialize_database():
         cursor.execute('ALTER TABLE transactions ADD COLUMN reviewed INTEGER DEFAULT 0')
         print("Migration: Added 'reviewed' column to transactions")
 
+    # Migration: add 'notes' column (blueprint: merchant/notes field)
+    try:
+        cursor.execute('SELECT notes FROM transactions LIMIT 1')
+    except sqlite3.OperationalError:
+        cursor.execute("ALTER TABLE transactions ADD COLUMN notes TEXT DEFAULT ''")
+        print("Migration: Added 'notes' column to transactions")
+
     conn.commit()
     conn.close()
     print("Database initialized successfully!")
@@ -176,6 +183,51 @@ def add_transactions(transactions, account_id, source_file):
     conn.commit()
     conn.close()
     return count, skipped
+
+
+def create_transaction(account_id, date, description, amount, category='Uncategorized', notes=''):
+    """
+    Manually create a single transaction (blueprint P0: Transaction CRUD).
+    amount > 0 = income, amount < 0 = expense.
+    Returns the new transaction id.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        '''INSERT INTO transactions
+           (account_id, date, description, amount, category, reviewed, source_file, notes)
+           VALUES (?, ?, ?, ?, ?, 0, 'manual', ?)''',
+        (account_id, date, description.strip(), float(amount),
+         category or 'Uncategorized', notes or '')
+    )
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+    return new_id
+
+
+def delete_transaction(tid):
+    """Permanently delete a transaction by ID."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM transactions WHERE id = ?', (tid,))
+    conn.commit()
+    conn.close()
+
+
+def update_transaction(tid, date, description, amount, category, notes=''):
+    """Full update of a transaction's editable fields."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        '''UPDATE transactions
+           SET date = ?, description = ?, amount = ?, category = ?, notes = ?
+           WHERE id = ?''',
+        (date, description.strip(), float(amount),
+         category or 'Uncategorized', notes or '', tid)
+    )
+    conn.commit()
+    conn.close()
 
 
 def get_all_transactions(account_id=None):

@@ -38,28 +38,88 @@
 <div class="widget-grid" id="widget-grid"></div>
 
 {% else %}
-<!-- Empty State -->
-<div class="empty-state">
-    <div class="empty-illustration">
-        <svg width="200" height="160" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="40" y="30" width="120" height="90" rx="8" stroke="var(--border-main)" stroke-width="2" fill="var(--bg-card)"/>
-            <line x1="60" y1="55" x2="140" y2="55" stroke="var(--border-main)" stroke-width="2"/>
-            <line x1="60" y1="70" x2="120" y2="70" stroke="var(--border-main)" stroke-width="2" opacity="0.5"/>
-            <line x1="60" y1="85" x2="130" y2="85" stroke="var(--border-main)" stroke-width="2" opacity="0.5"/>
-            <line x1="60" y1="100" x2="110" y2="100" stroke="var(--border-main)" stroke-width="2" opacity="0.3"/>
-            <circle cx="155" cy="115" r="25" fill="var(--btn-bg)" opacity="0.15"/>
-            <text x="148" y="122" font-size="24">📄</text>
-            <path d="M60 45 L75 38 L90 48 L105 35 L120 42 L135 30" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
-        </svg>
+<!-- Empty State: Onboarding -->
+<div class="onboarding-layout">
+
+    <!-- LEFT: Setup checklist -->
+    <div class="onboarding-left">
+        <h2 class="onboarding-heading">Let's get you set up</h2>
+        <p class="onboarding-desc">Import your bank transactions to start tracking income, spending, and savings — all in one place.</p>
+
+        <div class="checklist">
+            <!-- Step 1: active -->
+            <div class="checklist-item">
+                <div class="checklist-dot active">1</div>
+                <div>
+                    <div class="checklist-item-title">Upload your first CSV</div>
+                    <div style="margin-top:6px;">
+                        <a href="{{ url_for('upload') }}" class="btn-primary" style="font-size:var(--fs-sm);">Upload CSV →</a>
+                    </div>
+                </div>
+            </div>
+            <!-- Step 2: locked -->
+            <div class="checklist-item">
+                <div class="checklist-dot locked">2</div>
+                <div>
+                    <div class="checklist-item-title locked">Review auto-categorization</div>
+                    <div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:4px;">🔒 Upload a file first</div>
+                </div>
+            </div>
+            <!-- Step 3: locked -->
+            <div class="checklist-item">
+                <div class="checklist-dot locked">3</div>
+                <div>
+                    <div class="checklist-item-title locked">Set your first budget</div>
+                    <div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:4px;">🔒 Upload a file first</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="checklist-secondary-links">
+            {% if accounts %}
+            <button class="btn-secondary" onclick="openTxModal()" style="font-size:var(--fs-sm);cursor:pointer;">+ Add transaction manually</button>
+            {% endif %}
+        </div>
     </div>
-    <h2 class="empty-title">No transactions yet</h2>
-    <p class="empty-text">Upload a CSV from your bank or add a transaction manually to start tracking.</p>
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-        <a href="{{ url_for('upload') }}" class="btn-primary">Upload CSV</a>
-        {% if accounts %}
-        <button class="btn-primary" onclick="openTxModal()" style="cursor:pointer;">+ Add Manually</button>
-        {% endif %}
+
+    <!-- RIGHT: Dimmed dashboard preview -->
+    <div>
+        <div class="dashboard-preview">
+            <div class="dashboard-preview-header">
+                <span>Here's what your dashboard will look like</span>
+                <span style="margin-left:auto;">→</span>
+            </div>
+            <div class="dashboard-preview-inner">
+                <div class="preview-stat-row">
+                    <div class="preview-stat">
+                        <div class="stat-label">Net this month</div>
+                        <div class="stat-value">+$2,400</div>
+                    </div>
+                    <div class="preview-stat">
+                        <div class="stat-label">Income</div>
+                        <div class="stat-value income">+$5,200</div>
+                    </div>
+                    <div class="preview-stat">
+                        <div class="stat-label">Spent</div>
+                        <div class="stat-value spent">−$2,800</div>
+                    </div>
+                    <div class="preview-stat">
+                        <div class="stat-label">To review</div>
+                        <div class="stat-value">12</div>
+                    </div>
+                </div>
+                <div class="preview-chart">
+                    <svg width="100%" height="80" viewBox="0 0 400 80" preserveAspectRatio="none">
+                        <polyline points="0,60 60,45 120,50 180,30 240,35 300,20 360,25 400,15"
+                            fill="none" stroke="var(--accent)" stroke-width="2" opacity="0.6"/>
+                        <polygon points="0,60 60,45 120,50 180,30 240,35 300,20 360,25 400,15 400,80 0,80"
+                            fill="var(--accent)" opacity="0.08"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
     </div>
+
 </div>
 {% endif %}
 
@@ -190,7 +250,7 @@ var WIDGETS = {
     'ascii-chart':   { n: 'ASCII Chart',      i: '▓░', sz: 'wide' }
 };
 
-var DEFAULT_LAYOUT = ['stats-row', 'line-chart', 'donut', 'accounts', 'transactions'];
+var DEFAULT_LAYOUT = ['stats-row', 'line-chart', 'transactions', 'accounts', 'budget-bars', 'alerts', 'quick-actions'];
 
 // ============================================================
 // STATE
@@ -650,7 +710,7 @@ function renderMonthlyWidgets(data) {
                     borderColor: colors.income, backgroundColor: colors.income + '25', fill: true, tension: 0.35, pointRadius: 3 }] },
                 options: { responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c){ return '$' + c.parsed.y.toLocaleString('en-US',{minimumFractionDigits:2}); } } } },
-                    scales: { x: { ticks: { color: colors.text, maxTicksLimit: 7 }, grid: { color: colors.grid } },
+                    scales: { x: { offset: false, ticks: { color: colors.text, maxTicksLimit: 7 }, grid: { color: colors.grid } },
                         y: { ticks: { color: colors.text, callback: function(v){ return '$' + v.toLocaleString(); } }, grid: { color: colors.grid } } } }
             });
         }
@@ -1026,12 +1086,16 @@ document.addEventListener('DOMContentLoaded', function() {
 // INIT
 // ============================================================
 (function init() {
+    var LAYOUT_VERSION = 'v3';
     var saved = localStorage.getItem('dashboard-layout');
-    if (saved) {
+    var savedVersion = localStorage.getItem('dashboard-layout-version');
+    if (saved && savedVersion === LAYOUT_VERSION) {
         try { var p = JSON.parse(saved); layout = p.filter(function(w){ return WIDGETS[w]; }); }
         catch(e) { layout = DEFAULT_LAYOUT.slice(); }
     } else {
         layout = DEFAULT_LAYOUT.slice();
+        localStorage.setItem('dashboard-layout-version', LAYOUT_VERSION);
+        localStorage.setItem('dashboard-layout', JSON.stringify(layout));
     }
     if (document.getElementById('widget-grid')) {
         renderPalette();
