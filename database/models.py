@@ -124,6 +124,32 @@ def add_account(name, institution, account_type):
     return account_id
 
 
+def get_or_create_account(name, institution, account_type):
+    """Return an existing matching account or create it if needed."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        '''SELECT id FROM accounts
+           WHERE name = ? AND institution = ? AND account_type = ?
+           ORDER BY id
+           LIMIT 1''',
+        (name, institution, account_type)
+    )
+    row = cursor.fetchone()
+    if row:
+        conn.close()
+        return row['id']
+
+    cursor.execute(
+        'INSERT INTO accounts (name, institution, account_type) VALUES (?, ?, ?)',
+        (name, institution, account_type)
+    )
+    conn.commit()
+    account_id = cursor.lastrowid
+    conn.close()
+    return account_id
+
+
 def get_all_accounts():
     conn = get_connection()
     cursor = conn.cursor()
@@ -215,15 +241,15 @@ def delete_transaction(tid):
     conn.close()
 
 
-def update_transaction(tid, date, description, amount, category, notes=''):
+def update_transaction(tid, account_id, date, description, amount, category, notes=''):
     """Full update of a transaction's editable fields."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
         '''UPDATE transactions
-           SET date = ?, description = ?, amount = ?, category = ?, notes = ?
+           SET account_id = ?, date = ?, description = ?, amount = ?, category = ?, notes = ?
            WHERE id = ?''',
-        (date, description.strip(), float(amount),
+        (int(account_id), date, description.strip(), float(amount),
          category or 'Uncategorized', notes or '', tid)
     )
     conn.commit()
