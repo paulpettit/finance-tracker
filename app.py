@@ -17,7 +17,7 @@ from datetime import datetime
 from flask import (Flask, render_template, request, redirect, url_for,
                    flash, jsonify, session)
 from database.models import (
-    initialize_database, add_account, add_transactions,
+    initialize_database, get_or_create_account, add_transactions,
     get_all_transactions, get_all_accounts, get_all_categories,
     update_transaction_review, update_transaction_category, get_review_stats,
     create_transaction, delete_transaction, update_transaction,
@@ -30,6 +30,7 @@ from parsers import get_parser, PARSERS
 # ---- APP SETUP ----
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-fallback-key-change-in-production')
+initialize_database()
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -186,7 +187,7 @@ def _handle_csv_import():
         flash('No transactions found in file', 'error')
         return redirect(url_for('upload'))
 
-    account_id = add_account(account_name, inst_name, acct_type)
+    account_id = get_or_create_account(account_name, inst_name, acct_type)
     count, skipped = add_transactions(transactions, account_id, filename)
 
     # Clear session data
@@ -303,13 +304,13 @@ def budget():
         if action == 'set':
             category = request.form.get('category')
             amount = float(request.form.get('amount', 0))
-            set_budget(category, amount)
-            flash(f'Budget set for {category}: ${amount:.2f}/month', 'success')
+            set_budget(category, amount, selected_month)
+            flash(f'Budget set for {category} in {selected_month}: ${amount:.2f}/month', 'success')
 
         elif action == 'delete':
             category = request.form.get('category')
-            delete_budget(category)
-            flash(f'Budget removed for {category}', 'success')
+            delete_budget(category, selected_month)
+            flash(f'Budget removed for {category} in {selected_month}', 'success')
 
         elif action == 'prefill':
             # Pre-fill budgets based on average spending
@@ -320,14 +321,14 @@ def budget():
                     # Round up to nearest $10 for a comfortable buffer
                     import math
                     rounded = math.ceil(data['avg'] / 10) * 10
-                    set_budget(cat, rounded)
+                    set_budget(cat, rounded, selected_month)
                     count += 1
-            flash(f'Created {count} budgets based on your spending averages!', 'success')
+            flash(f'Created {count} budgets for {selected_month} based on your spending averages!', 'success')
 
         return redirect(url_for('budget', month=selected_month))
 
     # Gather all the data
-    budgets = get_budgets()
+    budgets = get_budgets(selected_month)
     spending = get_spending_by_category_for_month(selected_month)
     categories = get_all_categories()
     avg_spending = get_avg_spending_by_category()
@@ -496,12 +497,13 @@ def api_delete_transaction(tid):
 def api_update_transaction(tid):
     """Full update of a transaction."""
     data = request.get_json()
-    required = ['date', 'description', 'amount']
+    required = ['account_id', 'date', 'description', 'amount']
     if not all(data.get(k) is not None for k in required):
         return jsonify({'ok': False, 'error': 'Missing required fields'}), 400
     try:
         update_transaction(
             tid,
+            account_id=int(data['account_id']),
             date=data['date'],
             description=data['description'],
             amount=float(data['amount']),
@@ -542,7 +544,6 @@ def api_monthly_summary():
 
 # ---- START THE APP ----
 if __name__ == '__main__':
-    initialize_database()
     print("\nFinance Tracker is running!")
     print("   Open http://localhost:5000 in your browser\n")
     app.run(debug=True, port=5000)
