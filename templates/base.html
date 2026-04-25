@@ -16,7 +16,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script>
         (function() {
-            var theme = localStorage.getItem('theme') || 'abacus-light';
+            var theme = 'abacus-light';
+            try {
+                theme = localStorage.getItem('theme') || 'abacus-light';
+            } catch (e) {
+                theme = 'abacus-light';
+            }
             document.documentElement.setAttribute('data-theme', theme);
         })();
     </script>
@@ -24,18 +29,7 @@
 <body>
     <nav class="navbar">
         <a href="{{ url_for('index') }}" class="nav-brand">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="28" height="28" aria-hidden="true" class="nav-logo">
-              <line x1="24" y1="22" x2="24" y2="98" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-              <line x1="96" y1="22" x2="96" y2="98" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-              <line x1="24" y1="34" x2="96" y2="34" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="24" y1="54" x2="96" y2="54" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="24" y1="74" x2="96" y2="74" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="24" y1="94" x2="96" y2="94" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="72" cy="34" r="9" fill="#3865E6"/>
-              <circle cx="36" cy="54" r="9" fill="#E94E4E"/>
-              <circle cx="54" cy="74" r="9" fill="#2E9D6E"/>
-              <circle cx="90" cy="94" r="9" fill="#F2B84B"/>
-            </svg>
+            <img src="{{ url_for('static', filename='img/logo.svg') }}" width="28" height="28" alt="" aria-hidden="true" class="nav-logo">
             <span>Finance Tracker</span>
         </a>
         <div class="nav-right">
@@ -46,23 +40,22 @@
                 <a href="{{ url_for('upload') }}">Upload</a>
             </div>
             <div class="theme-picker-wrap">
-                <button class="theme-picker-btn" id="theme-picker-btn" title="Change theme">
-                    <span id="theme-icon">🎨</span>
-                    <span id="theme-name-label">Theme</span>
-                </button>
-                <div class="theme-dropdown" id="theme-dropdown">
-                    <div class="theme-dropdown-title">Choose a theme</div>
-                    <button class="theme-option" data-theme="abacus-light"><span class="theme-swatch" style="background:#f5f4ff;border-color:#6c63ff;"></span>Abacus Light</button>
-                    <button class="theme-option" data-theme="abacus-dark"><span class="theme-swatch" style="background:#1a1510;border-color:#e9c46a;"></span>Abacus Dark</button>
-                    <button class="theme-option" data-theme="mercury"><span class="theme-swatch" style="background:#f8f9fb;border-color:#1558bc;"></span>Mercury</button>
-                    <button class="theme-option" data-theme="stripe"><span class="theme-swatch" style="background:#0a2540;border-color:#635bff;"></span>Stripe</button>
-                    <button class="theme-option" data-theme="apple"><span class="theme-swatch" style="background:#f5f5f7;border-color:#0071e3;"></span>Apple</button>
-                    <button class="theme-option" data-theme="notion"><span class="theme-swatch" style="background:#ffffff;border-color:#37352f;"></span>Notion</button>
-                    <button class="theme-option" data-theme="linear"><span class="theme-swatch" style="background:#101012;border-color:#7c5cff;"></span>Linear</button>
-                    <button class="theme-option" data-theme="bloomberg"><span class="theme-swatch" style="background:#000000;border-color:#ff9933;"></span>Bloomberg</button>
-                    <button class="theme-option" data-theme="amex-platinum"><span class="theme-swatch" style="background:#0c0c10;border-color:#c9a96e;"></span>Amex Platinum</button>
-                    <button class="theme-option" data-theme="radix-light"><span class="theme-swatch" style="background:#f9f9fb;border-color:#3e63dd;"></span>Radix Light</button>
-                    <button class="theme-option" data-theme="radix-dark"><span class="theme-swatch" style="background:#111113;border-color:#849dff;"></span>Radix Dark</button>
+                <label class="sr-only" for="theme-select">Theme</label>
+                <div class="theme-picker-select-wrap">
+                    <span class="theme-picker-icon" aria-hidden="true">🎨</span>
+                    <select id="theme-select" class="theme-picker-select" aria-label="Choose a theme">
+                        <option value="abacus-light">Abacus Light</option>
+                        <option value="abacus-dark">Abacus Dark</option>
+                        <option value="mercury">Mercury</option>
+                        <option value="stripe">Stripe</option>
+                        <option value="apple">Apple</option>
+                        <option value="notion">Notion</option>
+                        <option value="linear">Linear</option>
+                        <option value="bloomberg">Bloomberg</option>
+                        <option value="amex-platinum">Amex Platinum</option>
+                        <option value="radix-light">Radix Light</option>
+                        <option value="radix-dark">Radix Dark</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -87,10 +80,9 @@
     <script>
         // Theme picker
         (function() {
-            var btn = document.getElementById('theme-picker-btn');
-            var dropdown = document.getElementById('theme-dropdown');
-            var options = document.querySelectorAll('.theme-option');
-            var label = document.getElementById('theme-name-label');
+            var select = document.getElementById('theme-select');
+
+            if (!select) return;
 
             var themeNames = {
                 'abacus-light': 'Abacus Light', 'abacus-dark': 'Abacus Dark',
@@ -100,34 +92,33 @@
                 'radix-light': 'Radix Light', 'radix-dark': 'Radix Dark'
             };
 
-            var current = localStorage.getItem('theme') || 'abacus-light';
-            label.textContent = themeNames[current] || 'Theme';
+            function readTheme() {
+                try {
+                    return localStorage.getItem('theme') || 'abacus-light';
+                } catch (e) {
+                    return document.documentElement.getAttribute('data-theme') || 'abacus-light';
+                }
+            }
 
-            // Mark active
-            options.forEach(function(opt) {
-                if (opt.getAttribute('data-theme') === current) opt.classList.add('active');
-            });
-
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                dropdown.classList.toggle('open');
-            });
-
-            options.forEach(function(opt) {
-                opt.addEventListener('click', function() {
-                    var theme = opt.getAttribute('data-theme');
-                    document.documentElement.setAttribute('data-theme', theme);
+            function writeTheme(theme) {
+                try {
                     localStorage.setItem('theme', theme);
-                    label.textContent = themeNames[theme] || theme;
-                    // Update active state
-                    options.forEach(function(o) { o.classList.remove('active'); });
-                    opt.classList.add('active');
-                    dropdown.classList.remove('open');
-                });
-            });
+                } catch (e) {
+                    // Storage can fail in privacy-restricted contexts; keep the in-memory theme change.
+                }
+            }
 
-            document.addEventListener('click', function() {
-                dropdown.classList.remove('open');
+            function setTheme(theme) {
+                if (!themeNames[theme]) return;
+                document.documentElement.setAttribute('data-theme', theme);
+                writeTheme(theme);
+                select.value = theme;
+            }
+
+            setTheme(readTheme());
+
+            select.addEventListener('change', function() {
+                setTheme(select.value);
             });
         })();
     </script>

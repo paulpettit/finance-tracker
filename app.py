@@ -12,16 +12,19 @@ Features:
 
 import os
 import csv
+import calendar
 from io import StringIO
-from datetime import datetime
+from datetime import datetime, date
 from flask import (Flask, render_template, request, redirect, url_for,
-                   flash, jsonify, session)
+                   flash, jsonify, session, Response)
 from database.models import (
-    initialize_database, get_or_create_account, add_transactions,
+    initialize_database, add_account, get_or_create_account, add_transactions,
     get_all_transactions, get_all_accounts, get_all_categories,
+    get_recent_uploads,
     update_transaction_review, update_transaction_category, get_review_stats,
     create_transaction, delete_transaction, update_transaction,
     add_rule, get_all_rules, delete_rule, toggle_rule, apply_rules_retroactively,
+    get_rule_match_counts, preview_rule_matches, update_rule_priority,
     set_budget, get_budgets, delete_budget, get_spending_by_category_for_month,
     get_avg_spending_by_category, get_monthly_spending_history
 )
@@ -34,6 +37,76 @@ initialize_database()
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+def _budget_summary(month=None):
+    """Build a compact budget summary for dashboard widgets and APIs."""
+    month = month or datetime.now().strftime('%Y-%m')
+    budgets = get_budgets(month)
+    spending = get_spending_by_category_for_month(month)
+    avg_spending = get_avg_spending_by_category()
+
+    budgeted_categories = {b['category'] for b in budgets}
+    total_budgeted = sum(b['amount'] for b in budgets)
+    total_spent = sum(spending.values())
+    over = []
+    warning = []
+    ok = []
+
+    for b in budgets:
+        cat = b['category']
+        amount = b['amount']
+        spent = spending.get(cat, 0)
+        pct = (spent / amount * 100) if amount > 0 else 0
+        item = {
+            'category': cat,
+            'budgeted': round(amount, 2),
+            'spent': round(spent, 2),
+            'remaining': round(amount - spent, 2),
+            'percent': round(min(pct, 100), 1),
+            'average': round(avg_spending.get(cat, {}).get('avg', 0), 2)
+        }
+        if spent > amount:
+            over.append(item)
+        elif pct >= 80:
+            warning.append(item)
+        else:
+            ok.append(item)
+
+    unbudgeted = [
+        {'category': cat, 'spent': round(amount, 2)}
+        for cat, amount in spending.items()
+        if cat not in budgeted_categories
+    ]
+
+    return {
+        'month': month,
+        'total_budgeted': round(total_budgeted, 2),
+        'total_spent': round(total_spent, 2),
+        'remaining': round(total_budgeted - total_spent, 2),
+        'percent': round(min((total_spent / total_budgeted * 100), 100), 1) if total_budgeted else 0,
+        'has_budgets': total_budgeted > 0,
+        'over': over,
+        'warning': warning,
+        'ok_count': len(ok),
+        'over_count': len(over),
+        'warning_count': len(warning),
+        'unbudgeted_count': len(unbudgeted),
+        'unbudgeted': sorted(unbudgeted, key=lambda x: -x['spent'])[:5]
+    }
+
+
+def _shift_sample_transactions_to_current_month(transactions):
+    """Keep sample data feeling current by moving dates into the active month."""
+    today = date.today()
+    last_day = calendar.monthrange(today.year, today.month)[1]
+    shifted = []
+    for tx in transactions:
+        day = int(tx['date'][-2:])
+        clone = dict(tx)
+        clone['date'] = date(today.year, today.month, min(day, last_day)).strftime('%Y-%m-%d')
+        shifted.append(clone)
+    return shifted
 
 
 # ==============================================================
@@ -55,6 +128,7 @@ def dashboard():
     total_transactions = len(transactions)
     total_spent = sum(t['amount'] for t in transactions if t['amount'] < 0)
     total_income = sum(t['amount'] for t in transactions if t['amount'] > 0)
+    budget_summary = _budget_summary()
 
     return render_template('index.html',
                            accounts=accounts,
@@ -62,7 +136,71 @@ def dashboard():
                            total_transactions=total_transactions,
                            total_spent=total_spent,
                            total_income=total_income,
-                           review_stats=review_stats)
+                           review_stats=review_stats,
+                           budget_summary=budget_summary)
+
+
+@app.route('/sample-data', methods=['POST'])
+def sample_data():
+    """Load the bundled fake CSV into the current month for first-run exploration."""
+    sample_path = os.path.join(os.path.dirname(__file__), 'sample_data', 'chase_sample.csv')
+    parser = get_parser('chase_checking')
+
+    if not parser or not os.path.exists(sample_path):
+        flash('Sample data is unavailable.', 'error')
+        return redirect(url_for('dashboard'))
+
+    with open(sample_path, 'r', encoding='utf-8-sig') as f:
+        transactions = _shift_sample_transactions_to_current_month(parser.parse(f.read()))
+
+    account_id = get_or_create_account('Sample Chase Checking', 'chase', 'checking')
+    count, skipped = add_transactions(transactions, account_id, 'sample_data/chase_sample.csv')
+
+    current_month = datetime.now().strftime('%Y-%m')
+    default_budgets = {
+        'Food & Drink': 350,
+        'Shopping': 300,
+        'Transportation': 180,
+        'Housing': 1800,
+        'Utilities': 250,
+        'Subscriptions': 75
+    }
+    for category, amount in default_budgets.items():
+        set_budget(category, amount, current_month)
+
+    if count:
+        flash(f'Loaded {count} sample transactions and starter budgets.', 'success')
+    else:
+        flash(f'Sample data is already loaded. {skipped} duplicates skipped.', 'success')
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/export.csv')
+def export_csv():
+    """Download all transactions as a CSV."""
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['date', 'description', 'amount', 'category', 'account', 'institution', 'source_file', 'reviewed', 'notes'])
+    accounts = {a['id']: a for a in get_all_accounts()}
+    for t in get_all_transactions():
+        account = accounts.get(t['account_id'])
+        writer.writerow([
+            t['date'],
+            t['description'],
+            t['amount'],
+            t['category'],
+            account['name'] if account else '',
+            account['institution'] if account else '',
+            t['source_file'] or '',
+            'yes' if t['reviewed'] else 'no',
+            t['notes'] or ''
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=finance-tracker-transactions.csv'}
+    )
 
 
 # ==============================================================
@@ -86,7 +224,10 @@ def upload():
 
     # GET — show upload form
     available_parsers = list(PARSERS.keys())
-    return render_template('upload.html', parsers=available_parsers, step='upload')
+    return render_template('upload.html',
+                           parsers=available_parsers,
+                           step='upload',
+                           recent_uploads=get_recent_uploads())
 
 
 def _handle_csv_preview():
@@ -123,6 +264,7 @@ def _handle_csv_preview():
                                        filename=file.filename,
                                        institution=institution,
                                        account_name=account_name,
+                                       recent_uploads=get_recent_uploads(),
                                        parsers=list(PARSERS.keys()))
             except Exception as e:
                 flash(f'Error parsing CSV: {str(e)}', 'error')
@@ -147,6 +289,7 @@ def _handle_csv_preview():
                            sample_rows=rows,
                            filename=file.filename,
                            account_name=account_name,
+                           recent_uploads=get_recent_uploads(),
                            parsers=list(PARSERS.keys()))
 
 
@@ -277,6 +420,12 @@ def rules():
             toggle_rule(int(request.form.get('rule_id')))
             flash('Rule toggled', 'success')
 
+        elif action == 'priority':
+            rule_id = int(request.form.get('rule_id'))
+            direction = request.form.get('direction', 'up')
+            update_rule_priority(rule_id, direction)
+            flash('Rule priority updated', 'success')
+
         elif action == 'apply_all':
             updated = apply_rules_retroactively()
             flash(f'Rules applied! {updated} transactions updated.', 'success')
@@ -285,7 +434,13 @@ def rules():
 
     all_rules = get_all_rules()
     categories = get_all_categories()
-    return render_template('rules.html', rules=all_rules, categories=categories)
+    match_counts = get_rule_match_counts()
+    matched_recent = sum(c['recent'] for c in match_counts.values())
+    return render_template('rules.html',
+                           rules=all_rules,
+                           categories=categories,
+                           match_counts=match_counts,
+                           matched_recent=matched_recent)
 
 
 # ==============================================================
@@ -403,6 +558,14 @@ def budget():
     _y, _m = int(selected_month[:4]), int(selected_month[5:7])
     _last = _cal.monthrange(_y, _m)[1]
     days_remaining = max(0, (_date(_y, _m, _last) - _date.today()).days)
+    if selected_month == current_month:
+        elapsed_days = min(_date.today().day, _last)
+    elif selected_month < current_month:
+        elapsed_days = _last
+    else:
+        elapsed_days = 0
+    expected_spent = total_budgeted * (elapsed_days / _last) if total_budgeted > 0 else 0
+    pacing_delta = round(expected_spent - total_spent, 2)
 
     return render_template('budget.html',
                            budget_data=budget_data,
@@ -414,7 +577,8 @@ def budget():
                            has_budgets=has_budgets,
                            suggestions=suggestions,
                            avg_spending=avg_spending,
-                           days_remaining=days_remaining)
+                           days_remaining=days_remaining,
+                           pacing_delta=pacing_delta)
 
 
 # ==============================================================
@@ -425,6 +589,23 @@ def budget():
 def api_transactions():
     transactions = get_all_transactions()
     return jsonify([dict(t) for t in transactions])
+
+
+@app.route('/api/accounts', methods=['POST'])
+def api_create_account():
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    account_type = data.get('account_type') or 'checking'
+    institution = data.get('institution') or 'manual'
+
+    if not name:
+        return jsonify({'ok': False, 'error': 'Account name is required'}), 400
+
+    try:
+        account_id = add_account(name, institution, account_type)
+        return jsonify({'ok': True, 'id': account_id})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @app.route('/api/review', methods=['POST'])
@@ -513,6 +694,38 @@ def api_update_transaction(tid):
         return jsonify({'ok': True})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/budget-summary')
+def api_budget_summary():
+    month = request.args.get('month') or datetime.now().strftime('%Y-%m')
+    return jsonify(_budget_summary(month))
+
+
+@app.route('/api/rules/preview', methods=['POST'])
+def api_rule_preview():
+    data = request.get_json() or {}
+    value = (data.get('condition_value') or '').strip()
+    if not value:
+        return jsonify({'ok': True, 'count': 0, 'matches': []})
+
+    matches = preview_rule_matches(
+        data.get('condition_field', 'description'),
+        data.get('condition_op', 'contains'),
+        value,
+        limit=5
+    )
+    return jsonify({
+        'ok': True,
+        'count': len(matches),
+        'matches': [{
+            'id': m['id'],
+            'date': m['date'],
+            'description': m['description'],
+            'amount': m['amount'],
+            'category': m['category']
+        } for m in matches]
+    })
 
 
 @app.route('/api/monthly-summary')

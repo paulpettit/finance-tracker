@@ -97,7 +97,21 @@
         <!-- Recent uploads placeholder -->
         <div class="upload-card">
             <h2 style="margin-bottom:var(--space-sm);">Recent Uploads</h2>
+            {% if recent_uploads %}
+            <div class="recent-upload-list">
+                {% for upload in recent_uploads %}
+                <div class="recent-upload-item">
+                    <div>
+                        <strong>{{ upload.source_file }}</strong>
+                        <span>{{ upload.account_name or upload.institution }} · {{ upload.start_date }} to {{ upload.end_date }}</span>
+                    </div>
+                    <b>{{ upload.transaction_count }} tx</b>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
             <p class="muted" style="font-size:var(--fs-sm);">Your recent imports will appear here.</p>
+            {% endif %}
         </div>
 
     </div>

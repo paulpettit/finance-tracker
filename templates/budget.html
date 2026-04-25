@@ -56,6 +56,11 @@
         </div>
         <div class="budget-hero-sub">
             out of ${{ "%.0f"|format(total_budgeted) }} budgeted &middot; {{ days_remaining }} day{{ 's' if days_remaining != 1 }} remaining
+            {% if pacing_delta > 0 %}
+             &middot; pacing under by ${{ "%.0f"|format(pacing_delta) }}
+            {% elif pacing_delta < 0 %}
+             &middot; pacing over by ${{ "%.0f"|format(pacing_delta|abs) }}
+            {% endif %}
         </div>
         <div class="budget-hero-bar">
             <div class="budget-hero-bar-fill {{ 'fill-over' if total_spent > total_budgeted else 'fill-warn' if pct >= 80 else 'fill-ok' }}"
@@ -95,12 +100,21 @@
     {% if nobdg_count is defined and nobdg_count > 0 %}
     <button class="filter-chip" data-filter="unbudgeted">Unbudgeted ({{ nobdg_count }})</button>
     {% endif %}
+    <label class="sort-control">
+        <span>Sort</span>
+        <select id="budget-sort">
+            <option value="status">% spent</option>
+            <option value="spent">Spent</option>
+            <option value="remaining">Remaining</option>
+            <option value="category">Category</option>
+        </select>
+    </label>
 </div>
 
 <div class="budget-grid budget-grid-3col" id="budget-grid">
     {% for b in budget_data %}
     {% set status = 'over' if b.over else 'unbudgeted' if not b.budgeted else 'warn' if b.warning else 'ok' %}
-    <div class="budget-card {{ 'budget-over' if b.over }} {{ 'budget-warn' if b.warning }}" data-status="{{ status }}">
+    <div class="budget-card {{ 'budget-over' if b.over }} {{ 'budget-warn' if b.warning }}" data-status="{{ status }}" data-category="{{ b.category }}" data-spent="{{ b.spent }}" data-percent="{{ b.percent }}" data-remaining="{{ b.remaining }}">
         <div class="budget-card-header">
             <div class="budget-category">
                 <span class="budget-cat-emoji">{{ EMOJI.get(b.category, '📂') }}</span>
@@ -151,13 +165,24 @@
             <span class="budget-avg">~${{ "%.0f"|format(b.avg) }}/mo avg</span>
         </div>
         {% endif %}
+        {% if b.budgeted > 0 %}
+        <details class="budget-edit">
+            <summary>Edit budget</summary>
+            <form method="POST">
+                <input type="hidden" name="action" value="set">
+                <input type="hidden" name="category" value="{{ b.category }}">
+                <input type="number" name="amount" value="{{ "%.0f"|format(b.budgeted) }}" step="5" min="0">
+                <button type="submit" class="btn-secondary">Save</button>
+            </form>
+        </details>
+        {% endif %}
     </div>
     {% endfor %}
 
     <!-- Inline suggestion cards -->
     {% if suggestions %}
     {% for s in suggestions[:3] %}
-    <div class="budget-card budget-suggestion-inline" data-status="unbudgeted">
+    <div class="budget-card budget-suggestion-inline" data-status="unbudgeted" data-category="{{ s.category }}" data-spent="{{ s.avg }}" data-percent="0" data-remaining="0">
         <div class="budget-card-header">
             <div class="budget-category">
                 <span class="budget-cat-emoji">{{ EMOJI.get(s.category, '📊') }}</span>
@@ -255,6 +280,8 @@
 <script>
 (function() {
     var chips = document.querySelectorAll('#budget-filter-chips .filter-chip');
+    var grid = document.getElementById('budget-grid');
+    var sort = document.getElementById('budget-sort');
     chips.forEach(function(chip) {
         chip.addEventListener('click', function() {
             chips.forEach(function(c) { c.classList.remove('active'); });
@@ -266,6 +293,20 @@
             });
         });
     });
+
+    function sortCards() {
+        if (!grid || !sort) return;
+        var cards = Array.prototype.slice.call(grid.querySelectorAll('.budget-card'));
+        var mode = sort.value;
+        cards.sort(function(a, b) {
+            if (mode === 'category') return a.dataset.category.localeCompare(b.dataset.category);
+            if (mode === 'spent') return parseFloat(b.dataset.spent || 0) - parseFloat(a.dataset.spent || 0);
+            if (mode === 'remaining') return parseFloat(a.dataset.remaining || 0) - parseFloat(b.dataset.remaining || 0);
+            return parseFloat(b.dataset.percent || 0) - parseFloat(a.dataset.percent || 0);
+        });
+        cards.forEach(function(card) { grid.appendChild(card); });
+    }
+    if (sort) sort.addEventListener('change', sortCards);
 })();
 </script>
 {% endblock %}

@@ -23,7 +23,7 @@
     </div>
     <div class="stats-strip-item">
         <div class="stats-strip-label">Matched (30d)</div>
-        <div class="stats-strip-value" style="color:var(--text-muted)">—</div>
+        <div class="stats-strip-value">{{ matched_recent }}</div>
     </div>
 </div>
 
@@ -38,6 +38,7 @@
             <button class="filter-chip active" data-filter="all">All ({{ rules|length }})</button>
             <button class="filter-chip" data-filter="enabled">Enabled ({{ rules | selectattr('enabled') | list | length }})</button>
             <button class="filter-chip" data-filter="disabled">Disabled ({{ rules | rejectattr('enabled') | list | length }})</button>
+            <button class="filter-chip" data-filter="never">Never matched</button>
         </div>
 
         <!-- Apply retroactively -->
@@ -58,10 +59,26 @@
         {% if rules %}
         <div class="rules-list" style="margin-top:var(--space-xs);">
             {% for rule in rules %}
-            <div class="rule-card {{ 'rule-disabled' if not rule.enabled }}" data-enabled="{{ 'true' if rule.enabled else 'false' }}">
+            {% set counts = match_counts.get(rule.id, {'total': 0, 'recent': 0}) %}
+            <div class="rule-card {{ 'rule-disabled' if not rule.enabled }}" data-enabled="{{ 'true' if rule.enabled else 'false' }}" data-matches="{{ counts.total }}">
                 <div class="rule-card-header">
-                    <div class="rule-name">{{ rule.name }}</div>
+                    <div>
+                        <div class="rule-name">{{ rule.name }}</div>
+                        <div class="rule-match-meta">{{ counts.total }} match{{ 'es' if counts.total != 1 }} total · {{ counts.recent }} in 30d</div>
+                    </div>
                     <div class="rule-card-actions">
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="priority">
+                            <input type="hidden" name="rule_id" value="{{ rule.id }}">
+                            <input type="hidden" name="direction" value="up">
+                            <button type="submit" class="btn-icon" title="Move up">↑</button>
+                        </form>
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="priority">
+                            <input type="hidden" name="rule_id" value="{{ rule.id }}">
+                            <input type="hidden" name="direction" value="down">
+                            <button type="submit" class="btn-icon" title="Move down">↓</button>
+                        </form>
                         <form method="POST" style="display:inline;">
                             <input type="hidden" name="action" value="toggle">
                             <input type="hidden" name="rule_id" value="{{ rule.id }}">
@@ -168,7 +185,7 @@
         </div>
 
         <!-- Live preview placeholder -->
-        <div class="live-preview-card">
+        <div class="live-preview-card" id="rule-live-preview">
             <p style="font-weight:var(--fw-medium);color:var(--text-secondary);">Live Preview</p>
             <p>Matching transactions will appear here as you type a keyword.</p>
         </div>
@@ -193,8 +210,10 @@
                     card.style.display = '';
                 } else if (filter === 'enabled') {
                     card.style.display = card.getAttribute('data-enabled') === 'true' ? '' : 'none';
-                } else {
+                } else if (filter === 'disabled') {
                     card.style.display = card.getAttribute('data-enabled') === 'false' ? '' : 'none';
+                } else {
+                    card.style.display = parseInt(card.getAttribute('data-matches') || '0', 10) === 0 ? '' : 'none';
                 }
             });
         });
@@ -210,8 +229,65 @@
             document.getElementById('action_category').value = cat;
             document.getElementById('rule-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
             document.getElementById('name').focus();
+            updateLivePreview();
         });
     });
+
+    var form = document.getElementById('rule-form');
+    var preview = document.getElementById('rule-live-preview');
+    var timer = null;
+
+    function money(amount) {
+        var sign = amount >= 0 ? '+' : '-';
+        return sign + '$' + Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function renderPreview(data) {
+        if (!preview) return;
+        if (!data.matches || !data.matches.length) {
+            preview.innerHTML = '<p style="font-weight:var(--fw-medium);color:var(--text-secondary);">Live Preview</p><p>No current transactions match this rule yet.</p>';
+            return;
+        }
+
+        var html = '<div class="live-preview-head"><span>Live Preview</span><span class="rule-chip chip-action">' + data.count + ' shown</span></div>';
+        html += '<div class="live-preview-list">';
+        data.matches.forEach(function(t) {
+            html += '<div class="live-preview-row">' +
+                '<div><strong>' + t.description + '</strong><span>' + t.date + ' · ' + (t.category || 'Uncategorized') + '</span></div>' +
+                '<b class="' + (t.amount >= 0 ? 'income' : 'spent') + '">' + money(t.amount) + '</b>' +
+                '</div>';
+        });
+        html += '</div>';
+        preview.innerHTML = html;
+    }
+
+    function updateLivePreview() {
+        if (!form) return;
+        var value = form.elements.condition_value.value.trim();
+        if (!value) {
+            preview.innerHTML = '<p style="font-weight:var(--fw-medium);color:var(--text-secondary);">Live Preview</p><p>Matching transactions will appear here as you type a keyword.</p>';
+            return;
+        }
+        fetch('/api/rules/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                condition_field: form.elements.condition_field.value,
+                condition_op: form.elements.condition_op.value,
+                condition_value: value
+            })
+        }).then(function(r) { return r.json(); }).then(renderPreview);
+    }
+
+    if (form) {
+        ['condition_field', 'condition_op', 'condition_value'].forEach(function(name) {
+            form.elements[name].addEventListener('input', function() {
+                clearTimeout(timer);
+                timer = setTimeout(updateLivePreview, 180);
+            });
+            form.elements[name].addEventListener('change', updateLivePreview);
+        });
+    }
 })();
 </script>
 {% endblock %}

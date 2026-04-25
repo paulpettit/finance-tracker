@@ -1,90 +1,67 @@
-# Personal Finance Tracker
+# Finance Tracker
 
-A Python/Flask web app that lets you import CSV exports from your bank and investment accounts to track net worth, spending, and investment performance over time.
+A local-first Flask app for importing bank CSVs, reviewing transactions, creating categorization rules, and tracking monthly budgets.
 
 ![Finance Tracker Demo](docs/demo.gif)
 
-## Supported Institutions
-- Chase (checking/credit)
-- American Express
-- Fidelity
-- Coinbase
-- Robinhood
-- Marcus (Goldman Sachs)
-- Charles Schwab
+## Highlights
 
-## Features
-- **CSV Import** — Upload exports from any supported institution
-- **Net Worth Tracking** — See your total net worth over time across all accounts
-- **Spending Breakdown** — Categorize and visualize where your money goes
-- **Investment Performance** — Track gains/losses across brokerage and crypto accounts
-- **Duplicate Detection** — Re-uploading a file won't double-count transactions
-
-## Tech Stack
-- **Backend:** Python 3, Flask
-- **Database:** SQLite
-- **Frontend:** HTML, CSS, JavaScript, Chart.js
-- **CSV Parsing:** Python csv module + custom parsers per institution
+- **Private CSV import**: Files are parsed locally and are not sent to an external service.
+- **Known bank parsers + generic mapping**: Chase checking/credit are registered today, and the generic CSV wizard lets you map date, description, amount, category, and account type columns for other exports.
+- **Dashboard widgets**: Summary stats, balance charts, recent activity, accounts, budget snapshot, alerts, and quick actions in a customizable layout.
+- **Transaction review workflow**: Mark transactions reviewed, edit categories inline, and add/edit/delete manual transactions.
+- **Rules engine**: Create rules that match descriptions or amounts, rename transactions, set categories, preview matching transactions live, apply rules retroactively, and reorder rule priority.
+- **Budget tracking**: Set monthly category budgets, filter/sort budget cards, edit limits inline, view pacing, and auto-create suggested budgets from spending averages.
+- **Sample data**: Load bundled fake transactions and starter budgets from the empty dashboard.
+- **Themes and branding**: Multiple themes, favicon assets, and the Four Beads logo system.
+- **CSV export**: Download all tracked transactions from `/export.csv`.
 
 ## Getting Started
 
-### Prerequisites
-- Python 3.8 or higher
-- pip (Python package manager)
-- Git
-
-### Installation
 ```bash
-# Clone the repo
-git clone https://github.com/YOUR_USERNAME/finance-tracker.git
-cd finance-tracker
-
-# Create a virtual environment
-python -m venv venv
-
-# Activate it (Windows)
-venv\Scripts\activate
-
-# Install dependencies
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-
-# Run the app
 python app.py
 ```
 
-Then open http://localhost:5000 in your browser.
+Then open [http://localhost:5000](http://localhost:5000).
+
+## Using The App
+
+1. Open **Upload** and import a CSV, or use **Try with sample data** from the empty dashboard.
+2. Review the dashboard and mark transactions as reviewed.
+3. Create rules on **Rules** to automate recurring categorization.
+4. Set category limits on **Budget** and monitor monthly progress.
+5. Export transactions from `/export.csv` when you need a spreadsheet copy.
+
+## CSV Import
+
+Registered parsers:
+
+- Chase checking
+- Chase credit
+
+For other banks or brokerages, choose **Other / Generic CSV** and map the required columns manually. The app supports optional category columns and sign flipping for credit-card style exports where purchases are positive.
 
 ## Project Structure
-```
+
+```text
 finance-tracker/
-├── app.py                  # Flask application (main entry point)
-├── requirements.txt        # Python dependencies
+├── app.py                  # Flask routes, upload flow, APIs
 ├── database/
-│   └── models.py           # Database setup and helper functions
-├── parsers/
-│   ├── base.py             # Base parser (all parsers inherit from this)
-│   ├── chase.py            # Chase CSV parser
-│   ├── amex.py             # Amex CSV parser (TODO)
-│   ├── fidelity.py         # Fidelity CSV parser (TODO)
-│   ├── coinbase.py         # Coinbase CSV parser (TODO)
-│   ├── robinhood.py        # Robinhood CSV parser (TODO)
-│   ├── marcus.py           # Marcus CSV parser (TODO)
-│   └── schwab.py           # Schwab CSV parser (TODO)
-├── templates/              # HTML templates
-│   ├── base.html           # Shared layout
-│   ├── index.html          # Dashboard
-│   └── upload.html         # CSV upload page
+│   └── models.py           # SQLite schema and query helpers
+├── parsers/                # Institution-specific CSV parsers
+├── sample_data/            # Fake CSVs for demos and testing
 ├── static/
-│   ├── css/
-│   │   └── style.css       # Styles
-│   └── js/
-│       └── charts.js       # Chart rendering
-└── sample_data/            # Fake CSVs for testing (NEVER use real data here)
-    └── chase_sample.csv
+│   ├── css/                # App styles and themes
+│   ├── img/                # Logo and illustration assets
+│   └── js/                 # Chart helpers
+└── templates/              # Flask/Jinja page templates
 ```
 
 ## Security Notes
-- **NEVER commit real financial data to GitHub**
-- The `.gitignore` file excludes the database and any uploaded files
-- Sample/fake data is provided for testing and demo purposes
-- This app runs locally only — your data stays on your machine
+
+- Do not commit real financial data.
+- `finance.db` and uploaded files should stay local.
+- Use the bundled sample data for demos, tests, and screenshots.

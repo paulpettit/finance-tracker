@@ -13,6 +13,7 @@ SQLite stores everything in a single file (finance.db). No server needed.
 
 import sqlite3
 import os
+from datetime import datetime, timedelta
 
 DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'finance.db')
 
@@ -271,6 +272,36 @@ def get_all_transactions(account_id=None):
     return rows
 
 
+def get_recent_uploads(limit=5):
+    """Return recent imported files with basic counts for the upload sidebar."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        '''
+        SELECT
+            t.source_file,
+            COUNT(*) AS transaction_count,
+            MAX(t.created_at) AS imported_at,
+            MIN(t.date) AS start_date,
+            MAX(t.date) AS end_date,
+            a.name AS account_name,
+            a.institution AS institution
+        FROM transactions t
+        LEFT JOIN accounts a ON a.id = t.account_id
+        WHERE t.source_file IS NOT NULL
+          AND t.source_file != ''
+          AND t.source_file != 'manual'
+        GROUP BY t.source_file, t.account_id
+        ORDER BY imported_at DESC
+        LIMIT ?
+        ''',
+        (limit,)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
 def update_transaction_review(transaction_id, reviewed):
     """Mark a transaction as reviewed (1) or unreviewed (0)."""
     conn = get_connection()
@@ -317,6 +348,15 @@ def get_all_categories():
     return [r['category'] for r in rows]
 
 
+def get_transaction_count():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) AS total FROM transactions')
+    total = cursor.fetchone()['total']
+    conn.close()
+    return total
+
+
 # ==============================================================
 # RULES ENGINE
 # ==============================================================
@@ -355,11 +395,13 @@ def add_rule(name, condition_field, condition_op, condition_value,
              action_category=None, action_rename=None):
     conn = get_connection()
     cursor = conn.cursor()
+    cursor.execute('SELECT COALESCE(MAX(priority), 0) + 1 AS next_priority FROM rules')
+    next_priority = cursor.fetchone()['next_priority']
     cursor.execute(
         '''INSERT INTO rules (name, condition_field, condition_op, condition_value,
-           action_category, action_rename) VALUES (?, ?, ?, ?, ?, ?)''',
+           action_category, action_rename, priority) VALUES (?, ?, ?, ?, ?, ?, ?)''',
         (name, condition_field, condition_op, condition_value,
-         action_category, action_rename)
+         action_category, action_rename, next_priority)
     )
     conn.commit()
     rule_id = cursor.lastrowid
@@ -377,6 +419,78 @@ def get_all_rules(enabled_only=False):
     rows = cursor.fetchall()
     conn.close()
     return rows
+
+
+def update_rule_priority(rule_id, direction):
+    """Move a rule up or down in priority order."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, priority FROM rules ORDER BY priority DESC, id')
+    rules = cursor.fetchall()
+    ids = [r['id'] for r in rules]
+
+    if rule_id not in ids:
+        conn.close()
+        return False
+
+    idx = ids.index(rule_id)
+    if direction == 'up' and idx > 0:
+        swap_idx = idx - 1
+    elif direction == 'down' and idx < len(ids) - 1:
+        swap_idx = idx + 1
+    else:
+        conn.close()
+        return False
+
+    ids[idx], ids[swap_idx] = ids[swap_idx], ids[idx]
+    total = len(ids)
+    for pos, rid in enumerate(ids):
+        cursor.execute('UPDATE rules SET priority = ? WHERE id = ?', (total - pos, rid))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def _recent_cutoff(days=30):
+    return (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+
+
+def get_rule_match_counts(days=30):
+    """Return per-rule match counts for all transactions and recent transactions."""
+    rules = get_all_rules()
+    transactions = get_all_transactions()
+    cutoff = _recent_cutoff(days)
+    counts = {}
+
+    for rule in rules:
+        total = 0
+        recent = 0
+        for txn in transactions:
+            txn_dict = dict(txn)
+            if match_rule(rule, txn_dict):
+                total += 1
+                if txn_dict.get('date', '') >= cutoff:
+                    recent += 1
+        counts[rule['id']] = {'total': total, 'recent': recent}
+
+    return counts
+
+
+def preview_rule_matches(condition_field, condition_op, condition_value, limit=5):
+    """Preview recent transactions that would match a not-yet-saved rule."""
+    rule = {
+        'condition_field': condition_field,
+        'condition_op': condition_op,
+        'condition_value': condition_value or ''
+    }
+    matches = []
+    for txn in get_all_transactions():
+        txn_dict = dict(txn)
+        if match_rule(rule, txn_dict):
+            matches.append(txn_dict)
+            if len(matches) >= limit:
+                break
+    return matches
 
 
 def delete_rule(rule_id):
