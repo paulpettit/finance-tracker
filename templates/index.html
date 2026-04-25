@@ -646,6 +646,19 @@ function renderDashboard() {
     if (!grid) return;
     grid.innerHTML = '';
 
+    var mainCol = null;
+    var sideCol = null;
+    var contentGrid = null;
+
+    contentGrid = document.createElement('div');
+    contentGrid.className = 'dashboard-content-grid' + (isEditing ? ' is-editing' : '');
+    mainCol = document.createElement('div');
+    mainCol.className = 'dashboard-main-col';
+    sideCol = document.createElement('div');
+    sideCol.className = 'dashboard-side-col';
+    contentGrid.appendChild(mainCol);
+    contentGrid.appendChild(sideCol);
+
     layout.forEach(function(wid, idx) {
         var w = WIDGETS[wid];
         if (!w || !RENDERERS[wid]) return;
@@ -675,8 +688,17 @@ function renderDashboard() {
         var inner = document.createElement('div');
         inner.innerHTML = RENDERERS[wid](idx);
         wrap.appendChild(inner);
-        grid.appendChild(wrap);
+
+        if (w.sz === 'main' || w.sz === 'side') {
+            (w.sz === 'side' ? sideCol : mainCol).appendChild(wrap);
+        } else {
+            grid.appendChild(wrap);
+        }
     });
+
+    if (contentGrid && (mainCol.children.length || sideCol.children.length)) {
+        grid.appendChild(contentGrid);
+    }
 
     // Trailing drop zone in edit mode
     if (isEditing) {
