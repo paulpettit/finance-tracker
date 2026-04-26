@@ -13,8 +13,9 @@ Features:
 import os
 import csv
 import calendar
+from collections import defaultdict
 from io import StringIO
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from flask import (Flask, render_template, request, redirect, url_for,
                    flash, jsonify, session, Response)
 from database.models import (
@@ -119,25 +120,264 @@ def index():
     return render_template('landing.html')
 
 
+def _format_tx_date(d, today):
+    """Friendly date label for the activity table."""
+    try:
+        dt = datetime.strptime(d, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return d
+    if dt == today:
+        return 'Today'
+    if dt == today - timedelta(days=1):
+        return 'Yesterday'
+    if dt.year == today.year:
+        return dt.strftime('%b %-d')
+    return dt.strftime('%b %-d, %Y')
+
+
+def _build_dashboard_chart(transactions, today):
+    """
+    Build SVG path data for the 30-day spending chart.
+    Returns dict with path, area, last_x/y, quietest point, and axis labels.
+    """
+    W, H, P = 720, 220, 18
+    days = 30
+    start = today - timedelta(days=days - 1)
+    daily = [0.0] * days
+    for t in transactions:
+        if t['amount'] >= 0:
+            continue
+        try:
+            dt = datetime.strptime(t['date'], '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            continue
+        if dt < start or dt > today:
+            continue
+        daily[(dt - start).days] += -t['amount']
+
+    if not any(daily):
+        return {
+            'spending_path': '', 'spending_area': '',
+            'last_x': 0, 'last_y': 0,
+            'quietest_x': None, 'quietest_y': 0,
+            'quietest_pct': 0, 'quietest_label': None,
+            'chart_x_labels': [
+                start.strftime('%b %-d'),
+                (start + timedelta(days=10)).strftime('%b %-d'),
+                (start + timedelta(days=20)).strftime('%b %-d'),
+                'Today',
+            ],
+        }
+
+    max_v = max(daily) or 1.0
+    step = (W - P * 2) / (days - 1)
+    pts = []
+    for i, v in enumerate(daily):
+        x = P + i * step
+        y = H - P - (v / max_v) * (H - P * 2)
+        pts.append((x, y))
+    path = ' '.join(
+        ('M' if i == 0 else 'L') + f'{x:.1f},{y:.1f}'
+        for i, (x, y) in enumerate(pts)
+    )
+    area = path + f' L{pts[-1][0]:.1f},{H - P} L{P},{H - P} Z'
+
+    # Pick the quietest non-zero day for the annotation. If everything is
+    # zero we already returned above.
+    nonzero = [(i, v) for i, v in enumerate(daily) if v > 0]
+    quiet_i = min(nonzero, key=lambda iv: iv[1])[0] if nonzero else 0
+    quiet_x, quiet_y = pts[quiet_i]
+    quiet_date = start + timedelta(days=quiet_i)
+
+    return {
+        'spending_path': path,
+        'spending_area': area,
+        'last_x': pts[-1][0],
+        'last_y': pts[-1][1],
+        'quietest_x': quiet_x,
+        'quietest_y': quiet_y,
+        'quietest_pct': (quiet_x / W) * 100,
+        'quietest_label': quiet_date.strftime('%b %-d'),
+        'chart_x_labels': [
+            start.strftime('%b %-d'),
+            (start + timedelta(days=10)).strftime('%b %-d'),
+            (start + timedelta(days=20)).strftime('%b %-d'),
+            'Today',
+        ],
+    }
+
+
+def _build_account_balances(accounts, transactions):
+    """Compute a balance per account by summing its transactions."""
+    sums = defaultdict(float)
+    for t in transactions:
+        sums[t['account_id']] += t['amount']
+    out = []
+    for a in accounts:
+        a_dict = dict(a)
+        a_dict['balance'] = round(sums.get(a['id'], 0.0), 2)
+        out.append(a_dict)
+    return out
+
+
+def _build_insight(transactions, today):
+    """
+    Pick an interesting "moment" for the dashboard insight card.
+    Compare this month's spend by category to the prior 3-month average and
+    surface the biggest jump. Returns None if there isn't a clear story.
+    """
+    month_start = today.replace(day=1)
+    prior_start = (month_start - timedelta(days=1)).replace(day=1)
+    # 3 prior months of dates: start = month_start - 90 days, roughly.
+    three_prior_start = (month_start - timedelta(days=92)).replace(day=1)
+
+    this_month = defaultdict(lambda: {'amount': 0.0, 'count': 0})
+    prior = defaultdict(lambda: {'amount': 0.0, 'months': set()})
+    for t in transactions:
+        if t['amount'] >= 0:
+            continue
+        try:
+            dt = datetime.strptime(t['date'], '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            continue
+        cat = t['category'] or 'Uncategorized'
+        if cat == 'Uncategorized':
+            continue
+        if dt >= month_start and dt <= today:
+            this_month[cat]['amount'] += -t['amount']
+            this_month[cat]['count'] += 1
+        elif three_prior_start <= dt < month_start:
+            prior[cat]['amount'] += -t['amount']
+            prior[cat]['months'].add(dt.strftime('%Y-%m'))
+
+    best = None
+    for cat, cur in this_month.items():
+        if cur['amount'] < 50:  # not enough money to be interesting
+            continue
+        prior_data = prior.get(cat)
+        prior_avg = (prior_data['amount'] / max(1, len(prior_data['months']))) if prior_data else 0
+        delta = cur['amount'] - prior_avg
+        if delta <= 0:
+            continue
+        # Prefer the biggest absolute jump over baseline.
+        if best is None or delta > best['_delta']:
+            best = {
+                'category': cat,
+                'amount': round(cur['amount'], 2),
+                'tx_count': cur['count'],
+                '_delta': delta,
+                '_prior_avg': prior_avg,
+            }
+
+    if not best:
+        return None
+
+    if best['_prior_avg'] > 0:
+        annual = best['amount'] * 12
+        detail = f"more than your prior 3-month average of ${best['_prior_avg']:,.0f}. At this pace, ${annual:,.0f} a year."
+    else:
+        detail = f"a new line item this month, on {best['tx_count']} transaction{'s' if best['tx_count'] != 1 else ''}."
+
+    return {
+        'category': best['category'],
+        'amount': best['amount'],
+        'tx_count': best['tx_count'],
+        'detail': detail,
+    }
+
+
 @app.route('/dashboard')
 def dashboard():
     accounts = get_all_accounts()
     transactions = get_all_transactions()
     review_stats = get_review_stats()
 
-    total_transactions = len(transactions)
-    total_spent = sum(t['amount'] for t in transactions if t['amount'] < 0)
-    total_income = sum(t['amount'] for t in transactions if t['amount'] > 0)
-    budget_summary = _budget_summary()
+    today = date.today()
+    month_start = today.replace(day=1)
+    has_data = bool(transactions)
 
-    return render_template('index.html',
-                           accounts=accounts,
-                           transactions=transactions,
-                           total_transactions=total_transactions,
-                           total_spent=total_spent,
-                           total_income=total_income,
-                           review_stats=review_stats,
-                           budget_summary=budget_summary)
+    # Whole-month income / spent from positive vs negative transactions.
+    month_income = 0.0
+    month_spent = 0.0
+    month_tx_count = 0
+    for t in transactions:
+        try:
+            dt = datetime.strptime(t['date'], '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            continue
+        if dt < month_start or dt > today:
+            continue
+        month_tx_count += 1
+        if t['amount'] > 0:
+            month_income += t['amount']
+        else:
+            month_spent += -t['amount']
+    month_net = round(month_income - month_spent, 2)
+
+    accounts_with_balance = _build_account_balances(accounts, transactions)
+    total_balance = sum(a['balance'] for a in accounts_with_balance)
+    balance_whole = int(total_balance)
+    balance_cents = f"{int(round((total_balance - balance_whole) * 100)):02d}"
+
+    chart = _build_dashboard_chart(transactions, today)
+
+    large_unreviewed = sum(
+        1 for t in transactions
+        if not t['reviewed'] and abs(t['amount']) > 100
+    )
+
+    # Top categories with budget context.
+    budget_summary = _budget_summary()
+    current_month_key = today.strftime('%Y-%m')
+    spending = get_spending_by_category_for_month(current_month_key)
+    budgets = {b['category']: b['amount'] for b in get_budgets(current_month_key)}
+    top_cats_raw = sorted(
+        ((cat, amt) for cat, amt in spending.items() if cat != 'Uncategorized'),
+        key=lambda kv: -kv[1]
+    )[:5]
+    top_categories = []
+    for cat, spent in top_cats_raw:
+        budgeted = budgets.get(cat, 0)
+        pct = round(min((spent / budgeted) * 100, 100), 1) if budgeted else 0
+        top_categories.append({
+            'category': cat,
+            'spent': round(spent, 2),
+            'budgeted': budgeted,
+            'percent': pct,
+            'over': budgeted and spent > budgeted,
+        })
+
+    # Recent activity (top 12) with friendly date labels.
+    recent_transactions = []
+    for t in transactions[:12]:
+        d = dict(t)
+        d['date_label'] = _format_tx_date(t['date'], today)
+        recent_transactions.append(d)
+
+    insight = _build_insight(transactions, today)
+
+    return render_template(
+        'index.html',
+        has_data=has_data,
+        accounts=accounts_with_balance,
+        recent_transactions=recent_transactions,
+        total_transactions=len(transactions),
+        review_stats=review_stats,
+        budget_summary=budget_summary,
+        balance_whole=balance_whole,
+        balance_cents=balance_cents,
+        month_income=round(month_income, 2),
+        month_spent=round(month_spent, 2),
+        month_net=month_net,
+        month_tx_count=month_tx_count,
+        large_unreviewed=large_unreviewed,
+        top_categories=top_categories,
+        month_label=today.strftime('%B'),
+        today_label=today.strftime('%A, %B %-d, %Y'),
+        issue_label=f'№ {today.strftime("%B %Y")}',
+        insight=insight,
+        **chart,
+    )
 
 
 @app.route('/sample-data', methods=['POST'])
@@ -283,14 +523,51 @@ def _handle_csv_preview():
     session['pending_account_name'] = account_name
     session['pending_filename'] = file.filename
 
+    suggested_columns = _suggest_csv_columns(headers)
+
     return render_template('upload.html',
                            step='map_columns',
                            headers=headers,
+                           suggested_columns=suggested_columns,
                            sample_rows=rows,
                            filename=file.filename,
                            account_name=account_name,
                            recent_uploads=get_recent_uploads(),
                            parsers=list(PARSERS.keys()))
+
+
+def _suggest_csv_columns(headers):
+    """Best-effort defaults for the generic CSV mapper."""
+    def normalize(value):
+        return ''.join(ch for ch in value.lower() if ch.isalnum())
+
+    normalized = [(header, normalize(header)) for header in headers]
+
+    def find(candidates, fallback_index=0, exclude=None):
+        exclude = set(exclude or [])
+        for header, key in normalized:
+            if header in exclude:
+                continue
+            if any(candidate in key for candidate in candidates):
+                return header
+        for header in headers:
+            if header not in exclude:
+                return header
+        return ''
+
+    date_col = find(('date', 'posted', 'posting', 'transactiondate'), 0)
+    desc_col = find(('description', 'merchant', 'payee', 'name', 'memo', 'details'), 1, {date_col})
+    amount_col = find(('amount', 'debit', 'credit', 'value'), 2, {date_col, desc_col})
+    category_col = find(('category', 'type'), 3, {date_col, desc_col, amount_col})
+    if category_col in {date_col, desc_col, amount_col}:
+        category_col = ''
+
+    return {
+        'date': date_col,
+        'description': desc_col,
+        'amount': amount_col,
+        'category': category_col,
+    }
 
 
 def _handle_csv_import():
@@ -402,6 +679,9 @@ def rules():
         action = request.form.get('action')
 
         if action == 'add':
+            existing_id = request.form.get('rule_id', '').strip()
+            if existing_id:
+                delete_rule(int(existing_id))
             add_rule(
                 name=request.form.get('name', 'New Rule'),
                 condition_field=request.form.get('condition_field', 'description'),
@@ -410,7 +690,7 @@ def rules():
                 action_category=request.form.get('action_category') or None,
                 action_rename=request.form.get('action_rename') or None
             )
-            flash('Rule created!', 'success')
+            flash('Rule updated!' if existing_id else 'Rule created!', 'success')
 
         elif action == 'delete':
             delete_rule(int(request.form.get('rule_id')))
@@ -436,11 +716,15 @@ def rules():
     categories = get_all_categories()
     match_counts = get_rule_match_counts()
     matched_recent = sum(c['recent'] for c in match_counts.values())
-    return render_template('rules.html',
-                           rules=all_rules,
-                           categories=categories,
-                           match_counts=match_counts,
-                           matched_recent=matched_recent)
+    review_stats = get_review_stats()
+    return render_template(
+        'rules.html',
+        rules=all_rules,
+        categories=categories,
+        match_counts=match_counts,
+        matched_recent=matched_recent,
+        review_unreviewed=review_stats['unreviewed'],
+    )
 
 
 # ==============================================================
@@ -553,13 +837,11 @@ def budget():
             })
     suggestions.sort(key=lambda x: -x['avg'])
 
-    import calendar as _cal
-    from datetime import date as _date
     _y, _m = int(selected_month[:4]), int(selected_month[5:7])
-    _last = _cal.monthrange(_y, _m)[1]
-    days_remaining = max(0, (_date(_y, _m, _last) - _date.today()).days)
+    _last = calendar.monthrange(_y, _m)[1]
+    days_remaining = max(0, (date(_y, _m, _last) - date.today()).days)
     if selected_month == current_month:
-        elapsed_days = min(_date.today().day, _last)
+        elapsed_days = min(date.today().day, _last)
     elif selected_month < current_month:
         elapsed_days = _last
     else:
@@ -567,18 +849,62 @@ def budget():
     expected_spent = total_budgeted * (elapsed_days / _last) if total_budgeted > 0 else 0
     pacing_delta = round(expected_spent - total_spent, 2)
 
-    return render_template('budget.html',
-                           budget_data=budget_data,
-                           categories=categories,
-                           selected_month=selected_month,
-                           current_month=current_month,
-                           total_budgeted=total_budgeted,
-                           total_spent=total_spent,
-                           has_budgets=has_budgets,
-                           suggestions=suggestions,
-                           avg_spending=avg_spending,
-                           days_remaining=days_remaining,
-                           pacing_delta=pacing_delta)
+    # 6-month history strip
+    month_total_history = get_monthly_spending_history(6)
+    month_totals = defaultdict(float)
+    for cat_months in month_total_history.values():
+        for m, v in cat_months.items():
+            month_totals[m] += v
+
+    history_months = []
+    cursor_y, cursor_m = _y, _m
+    months_back = []
+    for _ in range(6):
+        months_back.append(f"{cursor_y:04d}-{cursor_m:02d}")
+        cursor_m -= 1
+        if cursor_m == 0:
+            cursor_m = 12
+            cursor_y -= 1
+    months_back.reverse()
+    for m_key in months_back:
+        m_budgets = get_budgets(m_key)
+        m_budget_total = sum(b['amount'] for b in m_budgets)
+        m_spent = round(month_totals.get(m_key, 0), 2)
+        history_months.append({
+            'label': datetime.strptime(m_key, '%Y-%m').strftime('%b'),
+            'spent': m_spent,
+            'budget': m_budget_total,
+            'over': m_budget_total > 0 and m_spent > m_budget_total,
+            'current': m_key == selected_month,
+        })
+    history_max = max(
+        max((m['spent'] for m in history_months), default=0),
+        max((m['budget'] for m in history_months), default=0),
+        1,
+    )
+
+    month_pretty = datetime.strptime(selected_month, '%Y-%m').strftime('%B %Y')
+
+    return render_template(
+        'budget.html',
+        budget_data=budget_data,
+        categories=categories,
+        selected_month=selected_month,
+        current_month=current_month,
+        total_budgeted=total_budgeted,
+        total_spent=total_spent,
+        has_budgets=has_budgets,
+        suggestions=suggestions,
+        avg_spending=avg_spending,
+        days_remaining=days_remaining,
+        pacing_delta=pacing_delta,
+        elapsed_days=elapsed_days,
+        month_days=_last,
+        month_pretty=month_pretty,
+        history_months=history_months,
+        history_max=history_max,
+        issue_label=f'№ {month_pretty}',
+    )
 
 
 # ==============================================================
