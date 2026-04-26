@@ -1,312 +1,222 @@
 {% extends "base.html" %}
+{% set current_page = 'budget' %}
 {% block title %}Budget — Finance Tracker{% endblock %}
 
 {% block content %}
 
-{% set EMOJI = {'Food & Drink':'🍔','Coffee':'☕','Groceries':'🛒','Transport':'🚗','Uber':'🚗',
-  'Shopping':'🛍️','Entertainment':'🎬','Housing':'🏠','Rent':'🏠','Income':'💰',
-  'Health':'💊','Utilities':'⚡','Travel':'✈️','Dining':'🍽️','Subscriptions':'📺',
-  'Insurance':'🛡️','Education':'📚','Gym':'💪','Personal':'🪥','Other':'📂'} %}
+{% set total_budgeted = total_budgeted|default(0) %}
+{% set total_spent    = total_spent|default(0) %}
+{% set remaining = (total_budgeted - total_spent) if total_budgeted > 0 else 0 %}
+{% set pct = (((total_spent / total_budgeted) * 100) | round | int) if total_budgeted > 0 else 0 %}
+{% if pct > 100 %}{% set pct = 100 %}{% endif %}
 
-<div class="dashboard-header" style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:var(--space-md);">
-    <div>
-        <h1>Budget</h1>
-        <p class="dashboard-subtitle">
-            Viewing: <strong>{{ selected_month }}</strong>
-            {% if selected_month != current_month %}
-             · <a href="{{ url_for('budget') }}">Back to current month</a>
-            {% endif %}
-        </p>
+{% set pace_pct = (((elapsed_days / month_days) * 100) | round | int) if month_days else 0 %}
+
+<div class="lr-page-head has-right">
+  <div>
+    <div class="lr-kicker">
+      Budget · {{ month_pretty }} · day {{ elapsed_days }} of {{ month_days }}
     </div>
-    <!-- Month Navigation -->
-    <div class="budget-nav" style="display:flex;gap:var(--space-xs);">
-        {% set parts = selected_month.split('-') %}
-        {% set y = parts[0]|int %}
-        {% set m = parts[1]|int %}
-        {% set prev_m = 12 if m == 1 else m - 1 %}
-        {% set prev_y = y - 1 if m == 1 else y %}
-        {% set next_m = 1 if m == 12 else m + 1 %}
-        {% set next_y = y + 1 if m == 12 else y %}
-        <a href="{{ url_for('budget', month='%04d-%02d'|format(prev_y, prev_m)) }}" class="btn-secondary">← Prev</a>
-        <a href="{{ url_for('budget', month='%04d-%02d'|format(next_y, next_m)) }}" class="btn-secondary">Next →</a>
+    <h1 class="lr-h1">
+      {% if not has_budgets %}
+        No budgets <em class="lr-em">yet</em>.
+      {% elif total_spent > total_budgeted %}
+        Over by <em class="lr-em-warn lr-em">${{ "{:,.0f}".format(total_spent - total_budgeted) }}</em>.
+      {% else %}
+        ${{ "{:,.0f}".format(remaining) }} <span style="color: var(--muted); font-weight: 400;">left to spend.</span>
+      {% endif %}
+    </h1>
+    <p class="lr-lede">
+      {% if has_budgets %}
+        Spent <em class="lr-em-fg lr-em">${{ "{:,.0f}".format(total_spent) }}</em>
+        of <em class="lr-em-fg lr-em">${{ "{:,.0f}".format(total_budgeted) }}</em>
+        across {{ budget_data|length }} categories.
+        {% if pacing_delta is not none %}
+          {% if pacing_delta > 0 %}
+            At this pace, you'll <em class="lr-em-pos lr-em">finish ${{ "{:,.0f}".format(pacing_delta) }} under budget</em>.
+          {% elif pacing_delta < 0 %}
+            At this pace, you'll <em class="lr-em-warn lr-em">finish ${{ "{:,.0f}".format(-pacing_delta) }} over budget</em>.
+          {% endif %}
+        {% endif %}
+      {% else %}
+        Set spending limits per category and watch the pacing in real time. Suggestions are pulled from your own averages — no generic advice.
+      {% endif %}
+    </p>
+  </div>
+  <div style="display: flex; gap: 12px;">
+    <div class="budg-nav-arrows">
+      {% set parts = selected_month.split('-') %}
+      {% set y = parts[0]|int %}{% set m = parts[1]|int %}
+      {% set prev_m = 12 if m == 1 else m - 1 %}
+      {% set prev_y = y - 1 if m == 1 else y %}
+      {% set next_m = 1 if m == 12 else m + 1 %}
+      {% set next_y = y + 1 if m == 12 else y %}
+      <a href="{{ url_for('budget', month='%04d-%02d'|format(prev_y, prev_m)) }}" class="lr-btn lr-btn-secondary lr-btn-sm">← Prev</a>
+      <a href="{{ url_for('budget', month='%04d-%02d'|format(next_y, next_m)) }}" class="lr-btn lr-btn-secondary lr-btn-sm">Next →</a>
     </div>
+    {% if suggestions and not has_budgets %}
+    <form method="POST" style="margin: 0;">
+      <input type="hidden" name="action" value="prefill">
+      <button type="submit" class="lr-btn lr-btn-secondary">Suggest budgets</button>
+    </form>
+    {% endif %}
+    <button type="button" class="lr-btn lr-btn-primary" onclick="document.getElementById('new-cat').showModal()">+ New category</button>
+  </div>
 </div>
-
-<!-- Pre-compute counts for use throughout the page -->
-{% set over_count = budget_data | selectattr('over') | list | length %}
-{% set ok_count = budget_data | rejectattr('over') | rejectattr('warning') | selectattr('budgeted') | list | length %}
-{% set warn_count = budget_data | selectattr('warning') | rejectattr('over') | list | length %}
-{% set nobdg_count = budget_data | rejectattr('budgeted') | list | length %}
 
 {% if has_budgets %}
-<!-- ============================================ -->
-<!-- HERO CARD                                    -->
-<!-- ============================================ -->
-{% set remaining = [total_budgeted - total_spent, 0] | max %}
-{% set pct = [(total_spent / total_budgeted * 100)|int, 100]|min if total_budgeted > 0 else 0 %}
-
-<div class="budget-hero">
-    <div class="budget-hero-left">
-        <div class="budget-hero-heading">
-            {% if total_spent > total_budgeted %}
-            Over budget by ${{ "%.0f"|format(total_spent - total_budgeted) }}
-            {% else %}
-            You have ${{ "%.0f"|format(remaining) }} left to spend
-            {% endif %}
-        </div>
-        <div class="budget-hero-sub">
-            out of ${{ "%.0f"|format(total_budgeted) }} budgeted &middot; {{ days_remaining }} day{{ 's' if days_remaining != 1 }} remaining
-            {% if pacing_delta > 0 %}
-             &middot; pacing under by ${{ "%.0f"|format(pacing_delta) }}
-            {% elif pacing_delta < 0 %}
-             &middot; pacing over by ${{ "%.0f"|format(pacing_delta|abs) }}
-            {% endif %}
-        </div>
-        <div class="budget-hero-bar">
-            <div class="budget-hero-bar-fill {{ 'fill-over' if total_spent > total_budgeted else 'fill-warn' if pct >= 80 else 'fill-ok' }}"
-                 style="width:{{ pct }}%"></div>
-        </div>
-    </div>
-    <div class="budget-hero-right">
-        <div class="budget-mini-chip">
-            <div class="budget-mini-chip-val income">{{ ok_count }}</div>
-            <div class="budget-mini-chip-label">On track</div>
-        </div>
-        <div class="budget-mini-chip">
-            <div class="budget-mini-chip-val" style="color:var(--color-spent)">{{ over_count }}</div>
-            <div class="budget-mini-chip-label">Over</div>
-        </div>
-        <div class="budget-mini-chip">
-            <div class="budget-mini-chip-val">{{ nobdg_count }}</div>
-            <div class="budget-mini-chip-label">No budget</div>
-        </div>
-    </div>
+<!-- ── Pacing bar ─────────────────────────────────────── -->
+<div class="budg-pacing">
+  <div class="budg-pacing-label">
+    <span class="tabular">$0</span>
+    <span>Today's pace · ${{ "{:,.0f}".format(total_budgeted * elapsed_days / month_days if month_days else 0) }}</span>
+    <span class="tabular">${{ "{:,.0f}".format(total_budgeted) }}</span>
+  </div>
+  <div class="budg-pacing-track">
+    <div class="budg-pacing-fill" style="width: {{ pct }}%;"></div>
+    <div class="budg-pacing-marker" style="left: {{ pace_pct }}%;"></div>
+  </div>
+  <div class="budg-pacing-foot">
+    <span>{{ pct }}% spent</span>
+    <span class="is-accent">↑ today's pace</span>
+    <span>{{ 100 - pct }}% remaining</span>
+  </div>
 </div>
+
+<div class="lr-rule"></div>
 {% endif %}
 
-<!-- ============================================ -->
-<!-- BUDGET CARDS                                 -->
-<!-- ============================================ -->
+<!-- ── Categories ─────────────────────────────────────── -->
+<div class="lr-section-head">
+  <div>
+    <div class="lr-section-kicker">Categories</div>
+    <h2 class="lr-h2">Where the money lives</h2>
+  </div>
+</div>
+
 {% if budget_data %}
-
-<div class="filter-chips" id="budget-filter-chips">
-    <button class="filter-chip active" data-filter="all">All categories</button>
-    {% if over_count is defined and over_count > 0 %}
-    <button class="filter-chip" data-filter="over">Over ({{ over_count }})</button>
-    {% endif %}
-    {% if ok_count is defined and ok_count > 0 %}
-    <button class="filter-chip" data-filter="ok">On track ({{ ok_count }})</button>
-    {% endif %}
-    {% if nobdg_count is defined and nobdg_count > 0 %}
-    <button class="filter-chip" data-filter="unbudgeted">Unbudgeted ({{ nobdg_count }})</button>
-    {% endif %}
-    <label class="sort-control">
-        <span>Sort</span>
-        <select id="budget-sort">
-            <option value="status">% spent</option>
-            <option value="spent">Spent</option>
-            <option value="remaining">Remaining</option>
-            <option value="category">Category</option>
-        </select>
-    </label>
-</div>
-
-<div class="budget-grid budget-grid-3col" id="budget-grid">
-    {% for b in budget_data %}
-    {% set status = 'over' if b.over else 'unbudgeted' if not b.budgeted else 'warn' if b.warning else 'ok' %}
-    <div class="budget-card {{ 'budget-over' if b.over }} {{ 'budget-warn' if b.warning }}" data-status="{{ status }}" data-category="{{ b.category }}" data-spent="{{ b.spent }}" data-percent="{{ b.percent }}" data-remaining="{{ b.remaining }}">
-        <div class="budget-card-header">
-            <div class="budget-category">
-                <span class="budget-cat-emoji">{{ EMOJI.get(b.category, '📂') }}</span>
-                {{ b.category }}
-                {% if b.over %}
-                <span class="budget-status-icon" title="Over budget">🔴</span>
-                {% elif b.warning %}
-                <span class="budget-status-icon" title="Approaching limit">🟡</span>
-                {% elif b.budgeted > 0 %}
-                <span class="budget-status-icon" title="On track">🟢</span>
-                {% endif %}
-            </div>
-            {% if b.budgeted > 0 %}
-            <form method="POST" style="display:inline;">
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="category" value="{{ b.category }}">
-                <button type="submit" class="btn-icon" title="Remove budget">✕</button>
-            </form>
-            {% endif %}
-        </div>
-
-        <div class="budget-amounts">
-            <span class="budget-spent {{ 'spent' if b.over else '' }}">${{ "%.2f"|format(b.spent) }}</span>
-            {% if b.budgeted > 0 %}
-            <span class="budget-of"> of ${{ "%.2f"|format(b.budgeted) }}</span>
-            {% else %}
-            <span class="budget-of no-budget">no budget set</span>
-            {% endif %}
-        </div>
-
-        {% if b.budgeted > 0 %}
-        <div class="budget-bar">
-            <div class="budget-bar-fill {{ 'bar-over' if b.over else 'bar-warn' if b.warning else 'bar-ok' }}"
-                 style="width: {{ b.percent }}%"></div>
-        </div>
-        <div class="budget-footer">
-            {% if b.over %}
-            <span class="spent">Over by ${{ "%.2f"|format(b.remaining|abs) }}</span>
-            {% else %}
-            <span>${{ "%.2f"|format(b.remaining) }} left</span>
-            {% endif %}
-            {% if b.avg > 0 %}
-            <span class="budget-avg">avg: ${{ "%.0f"|format(b.avg) }}/mo</span>
-            {% endif %}
-        </div>
-        {% elif b.avg > 0 %}
-        <div class="budget-footer">
-            <span class="budget-avg">~${{ "%.0f"|format(b.avg) }}/mo avg</span>
-        </div>
+<div class="budg-grid">
+  {% for c in budget_data %}
+  {% set p = c.percent if c.percent <= 100 else 100 %}
+  <div class="budg-cell">
+    <div class="lr-cat-name">
+      <span>{{ c.category }}</span>
+      <span class="lr-cat-tx">avg ${{ "{:,.0f}".format(c.avg or 0) }}</span>
+    </div>
+    <div class="lr-cat-amt lr-cat-amt-large tabular">${{ "{:,.0f}".format(c.spent) }}</div>
+    <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">
+      {% if c.budgeted %}of ${{ "{:,.0f}".format(c.budgeted) }}{% else %}<em class="lr-em-muted">no budget</em>{% endif %}
+    </div>
+    <div class="lr-cat-bar">
+      <div class="lr-cat-bar-fill {% if c.over %}is-over{% endif %}" style="width: {{ p }}%;"></div>
+    </div>
+    <div class="lr-cat-foot {% if c.over %}is-over{% endif %}">
+      <span>
+        {% if not c.budgeted %}<em class="lr-em-muted">not yet budgeted</em>
+        {% elif c.over %}<em class="lr-em">over by ${{ "{:,.0f}".format(c.spent - c.budgeted) }}</em>
+        {% elif c.spent == 0 %}<em class="lr-em-muted">unused</em>
+        {% else %}{{ 100 - (p|int) }}% remaining{% endif %}
+      </span>
+      <form method="POST" style="margin: 0; display: inline;"
+            onsubmit="return confirm('Remove budget for {{ c.category }}?');">
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="category" value="{{ c.category }}">
+        {% if c.budgeted %}
+        <button type="submit" class="lr-btn lr-btn-secondary lr-btn-sm" style="font-size: 10px; padding: 3px 8px;">remove</button>
         {% endif %}
-        {% if b.budgeted > 0 %}
-        <details class="budget-edit">
-            <summary>Edit budget</summary>
-            <form method="POST">
-                <input type="hidden" name="action" value="set">
-                <input type="hidden" name="category" value="{{ b.category }}">
-                <input type="number" name="amount" value="{{ "%.0f"|format(b.budgeted) }}" step="5" min="0">
-                <button type="submit" class="btn-secondary">Save</button>
-            </form>
-        </details>
-        {% endif %}
+      </form>
     </div>
-    {% endfor %}
-
-    <!-- Inline suggestion cards -->
-    {% if suggestions %}
-    {% for s in suggestions[:3] %}
-    <div class="budget-card budget-suggestion-inline" data-status="unbudgeted" data-category="{{ s.category }}" data-spent="{{ s.avg }}" data-percent="0" data-remaining="0">
-        <div class="budget-card-header">
-            <div class="budget-category">
-                <span class="budget-cat-emoji">{{ EMOJI.get(s.category, '📊') }}</span>
-                {{ s.category }}
-            </div>
-        </div>
-        <div class="budget-amounts">
-            <span class="budget-spent">~${{ "%.0f"|format(s.avg) }}/mo</span>
-            <span class="budget-of"> avg spend</span>
-        </div>
-        <form method="POST" style="margin-top:var(--space-sm);">
-            <input type="hidden" name="action" value="set">
-            <input type="hidden" name="category" value="{{ s.category }}">
-            <div style="display:flex;gap:var(--space-xs);align-items:center;">
-                <input type="number" name="amount" value="{{ s.suggested }}" step="5" min="0"
-                       style="flex:1;padding:0.4rem 0.5rem;background:var(--bg-input);border:1px solid var(--border-main);border-radius:var(--radius-sm);color:var(--text-primary);font-size:var(--fs-sm);">
-                <button type="submit" class="btn-secondary" style="padding:0.4rem 0.75rem;font-size:var(--fs-xs);white-space:nowrap;">+ Add</button>
-            </div>
-        </form>
-    </div>
-    {% endfor %}
-    {% endif %}
+  </div>
+  {% endfor %}
 </div>
 
-{% elif suggestions and not has_budgets %}
-<!-- ============================================ -->
-<!-- SUGGESTED BUDGETS (no budgets yet)           -->
-<!-- ============================================ -->
-<div class="section-header">
-    <h2>Suggested Budgets</h2>
-</div>
-<p class="dashboard-subtitle" style="margin-bottom:1rem;">Based on your spending history. Adjust and set, or auto-create all.</p>
-
-<form method="POST" style="margin-bottom:1.5rem;">
-    <input type="hidden" name="action" value="prefill">
-    <button type="submit" class="btn-primary">Auto-Create All Budgets From My Averages</button>
-</form>
-
-<div class="budget-grid budget-grid-3col">
-    {% for s in suggestions[:8] %}
-    <div class="budget-card suggestion-card" data-status="unbudgeted">
-        <div class="budget-category">
-            <span class="budget-cat-emoji">{{ EMOJI.get(s.category, '📂') }}</span>
-            {{ s.category }}
-        </div>
-        <div class="budget-amounts">
-            <span class="budget-spent">~${{ "%.0f"|format(s.avg) }}/mo avg</span>
-            <span class="budget-of">({{ s.months }} month{{ 's' if s.months != 1 }})</span>
-        </div>
-        <form method="POST" style="display:flex;gap:0.5rem;align-items:center;margin-top:0.75rem;">
-            <input type="hidden" name="action" value="set">
-            <input type="hidden" name="category" value="{{ s.category }}">
-            <input type="number" name="amount" value="{{ s.suggested }}" step="5" min="0"
-                   style="width:90px;padding:0.4rem 0.5rem;background:var(--bg-input);border:1px solid var(--border-main);border-radius:6px;color:var(--text-primary);font-size:0.9rem;">
-            <button type="submit" class="btn-secondary" style="padding:0.4rem 0.75rem;font-size:0.85rem;">Set</button>
-        </form>
-    </div>
-    {% endfor %}
-</div>
-
-{% elif not budget_data %}
-<div class="empty-state" style="padding:2rem;">
-    <h2 class="empty-title">No budget data yet</h2>
-    <p class="empty-text">Upload some transactions first, then come back here. We'll suggest budgets based on your spending patterns.</p>
-    <a href="{{ url_for('upload') }}" class="btn-primary">Upload CSV</a>
-</div>
+<div class="lr-rule"></div>
 {% endif %}
 
-<!-- ============================================ -->
-<!-- QUICK-ADD FOOTER                             -->
-<!-- ============================================ -->
-{% if categories %}
-<div class="budget-quick-add">
-    <form method="POST" style="display:contents;">
-        <input type="hidden" name="action" value="set">
-        <div class="form-group">
-            <label>Category</label>
-            <input type="text" name="category" placeholder="e.g., Food & Drink" required list="budget-cat-list">
-            <datalist id="budget-cat-list">
-                {% for cat in categories %}<option value="{{ cat }}">{% endfor %}
-            </datalist>
-        </div>
-        <div class="form-group" style="max-width:160px;">
-            <label>Monthly Limit</label>
-            <input type="number" name="amount" step="5" min="0" placeholder="500" required>
-        </div>
-        <button type="submit" class="btn-primary" style="align-self:flex-end;white-space:nowrap;margin-bottom:0;">Set Budget</button>
+<!-- ── Suggestion / from history ──────────────────────── -->
+{% if suggestions %}
+{% set top = suggestions[0] %}
+<section class="lr-moment">
+  <div class="lr-moment-mark"><span class="lr-moment-mark-glyph">?</span></div>
+  <div>
+    <div class="lr-moment-kicker">From your history</div>
+    <p class="lr-moment-body">
+      You spend an average of <em class="lr-em">${{ "{:,.0f}".format(top.avg) }}/mo on {{ top.category|lower }}</em>
+      across {{ top.months }} month{{ 's' if top.months != 1 }}.
+      {% if top.category not in budget_data|map(attribute='category')|list %}
+        No category for it yet — want one?
+      {% else %}
+        Your current budget is on track.
+      {% endif %}
+    </p>
+  </div>
+  <div class="lr-moment-actions">
+    <form method="POST" style="margin: 0;">
+      <input type="hidden" name="action" value="set">
+      <input type="hidden" name="category" value="{{ top.category }}">
+      <input type="hidden" name="amount" value="{{ top.suggested }}">
+      <button type="submit" class="lr-btn lr-btn-primary">Create "{{ top.category }}" · ${{ top.suggested }}</button>
     </form>
+    <span class="lr-moment-or">or</span>
+    <form method="POST" style="margin: 0;">
+      <input type="hidden" name="action" value="prefill">
+      <button type="submit" class="lr-btn lr-btn-secondary lr-btn-sm">prefill all from history</button>
+    </form>
+  </div>
+</section>
+
+<div class="lr-rule-heavy"></div>
+{% endif %}
+
+<!-- ── History ─────────────────────────────────────────── -->
+{% if history_months %}
+<div class="lr-section-head">
+  <div>
+    <div class="lr-section-kicker">The record</div>
+    <h2 class="lr-h2">How you've done</h2>
+  </div>
+</div>
+
+<div class="budg-history">
+  {% for m in history_months %}
+  {% set sH = ((m.spent / history_max) * 160) if history_max else 0 %}
+  {% set bH = ((m.budget / history_max) * 160) if history_max else 0 %}
+  <div class="budg-history-col">
+    <div class="budg-history-amt {% if m.over %}is-over{% endif %} tabular">
+      ${{ "%.1f"|format(m.spent / 1000) }}k
+    </div>
+    {% if m.budget %}
+    <div class="budg-history-budget-line" style="bottom: {{ 28 + bH }}px;"></div>
+    {% endif %}
+    <div class="budg-history-bar {% if m.over %}is-over{% elif m.current %}is-current{% endif %}"
+         style="height: {{ sH }}px;"></div>
+    <div class="budg-history-label {% if m.current %}is-current{% endif %}">{{ m.label }}</div>
+  </div>
+  {% endfor %}
 </div>
 {% endif %}
 
-{% endblock %}
+<!-- ── New / set category modal ───────────────────────── -->
+<dialog id="new-cat" style="border: 1px solid var(--fg); background: var(--surface); padding: 24px; max-width: 440px; width: 90%;">
+  <form method="POST" style="margin: 0;">
+    <input type="hidden" name="action" value="set">
+    <h3 class="lr-h3" style="margin-bottom: 16px;">Set a category budget</h3>
+    <div style="margin-bottom: 14px;">
+      <label class="lr-field-label" for="budget-category">Category</label>
+      <input type="text" name="category" id="budget-category" class="lr-input" required list="cat-options" placeholder="e.g. Groceries">
+      <datalist id="cat-options">
+        {% for cat in categories %}<option value="{{ cat }}">{% endfor %}
+      </datalist>
+    </div>
+    <div style="margin-bottom: 20px;">
+      <label class="lr-field-label" for="budget-amount">Monthly limit</label>
+      <input type="number" name="amount" id="budget-amount" class="lr-input" required min="0" step="1" placeholder="200">
+    </div>
+    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+      <button type="button" class="lr-btn lr-btn-secondary lr-btn-sm" onclick="document.getElementById('new-cat').close()">Cancel</button>
+      <button type="submit" class="lr-btn lr-btn-primary lr-btn-sm">Set budget</button>
+    </div>
+  </form>
+</dialog>
 
-{% block scripts %}
-<script>
-(function() {
-    var chips = document.querySelectorAll('#budget-filter-chips .filter-chip');
-    var grid = document.getElementById('budget-grid');
-    var sort = document.getElementById('budget-sort');
-    chips.forEach(function(chip) {
-        chip.addEventListener('click', function() {
-            chips.forEach(function(c) { c.classList.remove('active'); });
-            chip.classList.add('active');
-            var filter = chip.getAttribute('data-filter');
-            document.querySelectorAll('#budget-grid .budget-card').forEach(function(card) {
-                var show = filter === 'all' || card.getAttribute('data-status') === filter;
-                card.style.display = show ? '' : 'none';
-            });
-        });
-    });
-
-    function sortCards() {
-        if (!grid || !sort) return;
-        var cards = Array.prototype.slice.call(grid.querySelectorAll('.budget-card'));
-        var mode = sort.value;
-        cards.sort(function(a, b) {
-            if (mode === 'category') return a.dataset.category.localeCompare(b.dataset.category);
-            if (mode === 'spent') return parseFloat(b.dataset.spent || 0) - parseFloat(a.dataset.spent || 0);
-            if (mode === 'remaining') return parseFloat(a.dataset.remaining || 0) - parseFloat(b.dataset.remaining || 0);
-            return parseFloat(b.dataset.percent || 0) - parseFloat(a.dataset.percent || 0);
-        });
-        cards.forEach(function(card) { grid.appendChild(card); });
-    }
-    if (sort) sort.addEventListener('change', sortCards);
-})();
-</script>
 {% endblock %}

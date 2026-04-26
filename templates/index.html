@@ -1,1198 +1,292 @@
 {% extends "base.html" %}
-
+{% set current_page = 'dashboard' %}
 {% block title %}Dashboard — Finance Tracker{% endblock %}
 
+{% block nav_cta %}
+  {% if has_data %}
+    <a href="{{ url_for('upload') }}" class="lr-add-btn">+ Add transaction</a>
+  {% endif %}
+{% endblock %}
+
 {% block content %}
-<div class="dashboard-header" style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:var(--space-lg);">
-    <div>
-        <h1>Dashboard</h1>
-        <p class="dashboard-subtitle">Your financial overview at a glance</p>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-        {% if accounts %}
-        <button class="btn-add-tx" onclick="openTxModal()">
-            <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Transaction
-        </button>
-        {% endif %}
-        {% if transactions %}
-        <div class="edit-toolbar">
-            <span class="widget-count-badge" id="widget-count-badge"></span>
-            <button class="btn-edit-layout" id="toggle-edit-btn" onclick="toggleEditMode()">✎ Edit Layout</button>
-        </div>
-        {% endif %}
-    </div>
+
+{% if not has_data %}
+<!-- ── Empty state ─────────────────────────────────────── -->
+<div class="lr-empty">
+  <div class="lr-empty-mark">No issue printed yet.</div>
+  <h1 class="lr-h1" style="margin-bottom: 16px;">Bring in your first <em class="lr-em">transactions</em>.</h1>
+  <p class="lr-lede" style="margin: 0 auto 32px;">
+    The Ledger reads CSVs from your bank or brokerage. Drop one in, or load 184 fake transactions to try it.
+  </p>
+  <div style="display:flex; gap:12px; justify-content:center;">
+    <a href="{{ url_for('upload') }}" class="lr-btn lr-btn-primary lr-btn-lg">Upload your first CSV →</a>
+    <form method="POST" action="{{ url_for('sample_data') }}" style="margin:0;">
+      <button type="submit" class="lr-btn lr-btn-secondary lr-btn-lg">Try sample data</button>
+    </form>
+  </div>
 </div>
-
-{% if transactions %}
-
-<!-- Widget palette (shown in edit mode) -->
-<div class="widget-palette" id="widget-palette">
-    <div class="palette-header">
-        <span class="palette-title">+ Click a widget to add it to your dashboard</span>
-        <button class="palette-done-btn" onclick="toggleEditMode()">Done Editing</button>
-    </div>
-    <div class="palette-chips" id="palette-chips"></div>
-</div>
-
-<!-- Widget grid -->
-<div class="widget-grid" id="widget-grid"></div>
 
 {% else %}
-<!-- Empty State: Onboarding -->
-<div class="onboarding-layout">
 
-    <!-- LEFT: Setup checklist -->
-    <div class="onboarding-left">
-        <h2 class="onboarding-heading">Let's get you set up</h2>
-        <p class="onboarding-desc">Import your bank transactions to start tracking income, spending, and savings — all in one place.</p>
-
-        <div class="checklist">
-            <!-- Step 1: active -->
-            <div class="checklist-item">
-                <div class="checklist-dot active">1</div>
-                <div>
-                    <div class="checklist-item-title">Upload your first CSV</div>
-                    <div style="margin-top:6px;">
-                        <a href="{{ url_for('upload') }}" class="btn-primary" style="font-size:var(--fs-sm);">Upload CSV →</a>
-                    </div>
-                </div>
-            </div>
-            <!-- Step 2: locked -->
-            <div class="checklist-item">
-                <div class="checklist-dot locked">2</div>
-                <div>
-                    <div class="checklist-item-title locked">Review auto-categorization</div>
-                    <div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:4px;">🔒 Upload a file first</div>
-                </div>
-            </div>
-            <!-- Step 3: locked -->
-            <div class="checklist-item">
-                <div class="checklist-dot locked">3</div>
-                <div>
-                    <div class="checklist-item-title locked">Set your first budget</div>
-                    <div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:4px;">🔒 Upload a file first</div>
-                </div>
-            </div>
-        </div>
-
-            <div class="checklist-secondary-links">
-            <form method="POST" action="{{ url_for('sample_data') }}" style="display:inline;">
-                <button type="submit" class="btn-secondary" style="font-size:var(--fs-sm);cursor:pointer;">Try with sample data</button>
-            </form>
-            <button class="btn-secondary" onclick="openTxModal()" style="font-size:var(--fs-sm);cursor:pointer;">+ Add transaction manually</button>
-        </div>
+<!-- ── Masthead ────────────────────────────────────────── -->
+<header class="dash-mast">
+  <div>
+    <div class="lr-kicker">The state of your money · {{ today_label }}</div>
+    <h1 class="dash-balance tabular">
+      ${{ "{:,}".format(balance_whole) }}<span class="dash-balance-cents">.{{ balance_cents }}</span>
+    </h1>
+    <svg class="dash-mast-flourish" viewBox="0 0 220 10">
+      <path d="M2,5 Q55,1 110,5 T218,5" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <div class="dash-mast-sub">
+      Across <strong>{{ accounts|length }} account{{ 's' if accounts|length != 1 }}</strong>
+      {% if month_net != 0 %}
+        &nbsp;·&nbsp;
+        {% if month_net > 0 %}
+          <em class="lr-em lr-em-pos">up ${{ "{:,.0f}".format(month_net) }}</em> this month.
+        {% else %}
+          <em class="lr-em lr-em-warn">down ${{ "{:,.0f}".format(-month_net) }}</em> this month.
+        {% endif %}
+      {% endif %}
     </div>
-
-    <!-- RIGHT: Dimmed dashboard preview -->
-    <div>
-        <div class="dashboard-preview">
-            <div class="dashboard-preview-header">
-                <span>Here's what your dashboard will look like</span>
-                <span style="margin-left:auto;">→</span>
-            </div>
-            <div class="dashboard-preview-inner">
-                <div class="preview-stat-row">
-                    <div class="preview-stat">
-                        <div class="stat-label">Net this month</div>
-                        <div class="stat-value">+$2,400</div>
-                    </div>
-                    <div class="preview-stat">
-                        <div class="stat-label">Income</div>
-                        <div class="stat-value income">+$5,200</div>
-                    </div>
-                    <div class="preview-stat">
-                        <div class="stat-label">Spent</div>
-                        <div class="stat-value spent">−$2,800</div>
-                    </div>
-                    <div class="preview-stat">
-                        <div class="stat-label">To review</div>
-                        <div class="stat-value">12</div>
-                    </div>
-                </div>
-                <div class="preview-chart">
-                    <svg width="100%" height="80" viewBox="0 0 400 80" preserveAspectRatio="none">
-                        <polyline points="0,60 60,45 120,50 180,30 240,35 300,20 360,25 400,15"
-                            fill="none" stroke="var(--accent)" stroke-width="2" opacity="0.6"/>
-                        <polygon points="0,60 60,45 120,50 180,30 240,35 300,20 360,25 400,15 400,80 0,80"
-                            fill="var(--accent)" opacity="0.08"/>
-                    </svg>
-                </div>
-            </div>
-        </div>
+  </div>
+  <div class="dash-stats">
+    <div class="lr-stat">
+      <div class="lr-stat-label">Income</div>
+      <div class="lr-stat-value is-pos">+${{ "{:,.0f}".format(month_income) }}</div>
+      <div class="lr-stat-delta">This month</div>
     </div>
+    <div class="lr-stat">
+      <div class="lr-stat-label">Spent</div>
+      <div class="lr-stat-value">−${{ "{:,.0f}".format(month_spent) }}</div>
+      <div class="lr-stat-delta">
+        {% if budget_summary.has_budgets %}
+          {{ budget_summary.percent }}% of monthly budget
+        {% else %}
+          {{ month_tx_count }} transactions
+        {% endif %}
+      </div>
+    </div>
+    <div class="lr-stat">
+      <div class="lr-stat-label">To review</div>
+      <div class="lr-stat-value">{{ review_stats.unreviewed }}</div>
+      <div class="lr-stat-delta">
+        {% if large_unreviewed > 0 %}
+          {{ large_unreviewed }} over $100
+        {% else %}
+          all caught up
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</header>
 
-</div>
+<div class="lr-rule-heavy"></div>
+
+<!-- ── 30-day chart + accounts ────────────────────────── -->
+<section class="dash-chart-row">
+  <div>
+    <div class="lr-section-head">
+      <div>
+        <div class="lr-section-kicker">Last 30 days</div>
+        <h2 class="lr-h2">Spending</h2>
+      </div>
+      <div class="lr-tabs">
+        <button class="lr-tab is-active" type="button">30D</button>
+        <button class="lr-tab" type="button">90D</button>
+        <button class="lr-tab" type="button">YTD</button>
+      </div>
+    </div>
+    <div class="dash-chart-wrap">
+      <svg viewBox="0 0 720 220" preserveAspectRatio="none" class="dash-chart" aria-hidden="true">
+        <line x1="18" x2="702" y1="68"  y2="68"  stroke="var(--rule-soft)" stroke-width="0.5" stroke-dasharray="2 4"/>
+        <line x1="18" x2="702" y1="110" y2="110" stroke="var(--rule-soft)" stroke-width="0.5" stroke-dasharray="2 4"/>
+        <line x1="18" x2="702" y1="152" y2="152" stroke="var(--rule-soft)" stroke-width="0.5" stroke-dasharray="2 4"/>
+        {% if spending_path %}
+          <path d="{{ spending_area }}" fill="var(--accent)" opacity="0.08"/>
+          <path d="{{ spending_path }}" fill="none" stroke="var(--fg)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+          {% if quietest_x is not none %}
+          <line x1="{{ quietest_x }}" x2="{{ quietest_x }}" y1="{{ quietest_y }}" y2="18"
+                stroke="var(--muted)" stroke-width="0.5" stroke-dasharray="2 3"/>
+          {% endif %}
+          <circle cx="{{ last_x }}" cy="{{ last_y }}" r="4" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/>
+        {% endif %}
+      </svg>
+      {% if quietest_label %}
+      <div class="dash-chart-quiet" style="left: {{ quietest_pct }}%;">quiet day · {{ quietest_label }}</div>
+      {% endif %}
+      <div class="dash-chart-axis">
+        {% for lbl in chart_x_labels %}<span>{{ lbl }}</span>{% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-accounts">
+    <div class="lr-section-head">
+      <div>
+        <div class="lr-section-kicker">Accounts</div>
+        <h2 class="lr-h2">Balances</h2>
+      </div>
+      <a href="{{ url_for('upload') }}" class="lr-link-arrow" style="font-size: 12px;">Connect new →</a>
+    </div>
+    {% for a in accounts %}
+    <div class="dash-acct">
+      <div>
+        <div class="dash-acct-name">{{ a.name }}</div>
+        <div class="dash-acct-sub">
+          {{ a.institution }} · <em class="lr-em lr-em-muted">{{ a.account_type|capitalize }}</em>
+        </div>
+      </div>
+      <div class="dash-acct-amt tabular {% if a.balance < 0 %}is-neg{% endif %}">
+        {% if a.balance < 0 %}−${{ "{:,.2f}".format(-a.balance) }}{% else %}${{ "{:,.2f}".format(a.balance) }}{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="lr-rule"></div>
+
+<!-- ── Insight ─────────────────────────────────────────── -->
+{% if insight %}
+<section class="lr-moment">
+  <div class="lr-moment-mark"><span class="lr-moment-mark-glyph">№</span></div>
+  <div>
+    <div class="lr-moment-kicker">Insight of the week</div>
+    <p class="lr-moment-body">
+      You've spent <em class="lr-em">${{ "{:,.0f}".format(insight.amount) }} on {{ insight.category|lower }}</em>
+      this month — {{ insight.detail }}
+    </p>
+  </div>
+  <div class="lr-moment-actions">
+    <a href="{{ url_for('budget') }}" class="lr-btn lr-btn-secondary">Set a {{ insight.category }} budget</a>
+    <span class="lr-moment-or">or</span>
+    <a href="#activity" class="lr-link-arrow" style="font-size: 12px;">See all {{ insight.tx_count }} transactions →</a>
+  </div>
+</section>
+
+<div class="lr-rule"></div>
 {% endif %}
 
-<!-- ============================================================
-     ADD / EDIT TRANSACTION MODAL  (blueprint wireframe)
-     ============================================================ -->
-<dialog id="tx-modal" class="tx-modal" aria-labelledby="tx-modal-title">
-    <div class="tx-modal-header">
-        <h2 id="tx-modal-title">Add Transaction</h2>
-        <button class="tx-modal-close" onclick="closeTxModal()" aria-label="Close">&times;</button>
+<!-- ── Categories ─────────────────────────────────────── -->
+{% if top_categories %}
+<section>
+  <div class="lr-section-head">
+    <div>
+      <div class="lr-section-kicker">By category</div>
+      <h2 class="lr-h2">Where it went</h2>
     </div>
-    <div class="tx-modal-body">
-        <form id="tx-form" onsubmit="saveTxModal(event)" novalidate>
-            <!-- Type: Expense / Income -->
-            <div class="tx-type-row" role="group" aria-label="Transaction type">
-                <label class="tx-type-label expense">
-                    <input type="radio" name="tx-type" value="expense" id="tx-type-expense" checked>
-                    <span class="tx-type-pill">
-                        <i data-lucide="arrow-down-circle" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;"></i>Expense
-                    </span>
-                </label>
-                <label class="tx-type-label income">
-                    <input type="radio" name="tx-type" value="income" id="tx-type-income">
-                    <span class="tx-type-pill">
-                        <i data-lucide="arrow-up-circle" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px;"></i>Income
-                    </span>
-                </label>
-            </div>
+    <span class="dash-period">{{ month_label }}, so far</span>
+  </div>
+  <div class="dash-cats">
+    {% for c in top_categories %}
+    <div class="lr-cat-card">
+      <div class="lr-cat-name">
+        <span>{{ c.category }}</span>
+      </div>
+      <div class="lr-cat-amt">
+        ${{ "{:,.0f}".format(c.spent) }}{% if c.budgeted %}<span class="lr-cat-amt-of">/ ${{ "{:,.0f}".format(c.budgeted) }}</span>{% endif %}
+      </div>
+      <div class="lr-cat-bar">
+        <div class="lr-cat-bar-fill {% if c.over %}is-over{% endif %}" style="width: {{ c.percent }}%;"></div>
+      </div>
+      <div class="lr-cat-foot {% if c.over %}is-over{% endif %}">
+        {% if c.over %}<em class="lr-em">over budget</em>
+        {% elif c.budgeted %}{{ (100 - c.percent)|round|int }}% remaining
+        {% else %}<em class="lr-em-muted">no budget</em>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
 
-            <div class="tx-form-grid">
-                <div class="tx-form-group">
-                    <label for="tx-date">Date</label>
-                    <input type="date" id="tx-date" required>
-                </div>
-                <div class="tx-form-group">
-                    <label for="tx-account">Account</label>
-                    {% if accounts %}
-                    <select id="tx-account" required>
-                        {% for acct in accounts %}
-                        <option value="{{ acct.id }}">{{ acct.name }}</option>
-                        {% endfor %}
-                    </select>
-                    {% else %}
-                    <input type="text" id="tx-account-name" placeholder="e.g. Main Checking" required>
-                    <select id="tx-account-type" style="margin-top:6px;">
-                        <option value="checking">Checking</option>
-                        <option value="credit_card">Credit Card</option>
-                        <option value="savings">Savings</option>
-                        <option value="brokerage">Brokerage</option>
-                        <option value="crypto">Crypto</option>
-                    </select>
-                    {% endif %}
-                </div>
-                <div class="tx-form-group">
-                    <label for="tx-amount">Amount</label>
-                    <input type="number" id="tx-amount" step="0.01" min="0.01" placeholder="0.00" required>
-                </div>
-                <div class="tx-form-group">
-                    <label for="tx-category">Category</label>
-                    <select id="tx-category">
-                        <!-- populated by JS -->
-                    </select>
-                </div>
-                <div class="tx-form-group full-width">
-                    <label for="tx-description">Description / Merchant</label>
-                    <input type="text" id="tx-description" placeholder="e.g. Grocery Store" required>
-                </div>
-                <div class="tx-form-group full-width">
-                    <label for="tx-notes">Notes <span class="optional">(optional)</span></label>
-                    <input type="text" id="tx-notes" placeholder="e.g. Weekly shop">
-                </div>
-            </div>
+<div class="lr-rule"></div>
+{% endif %}
 
-            <div id="tx-form-error" style="display:none;color:var(--color-spent);font-size:12px;margin-bottom:8px;padding:6px 10px;background:var(--bg-body);border-radius:var(--radius-sm);border-left:3px solid var(--color-spent);"></div>
-        </form>
+<!-- ── Recent activity ────────────────────────────────── -->
+<section id="activity">
+  <div class="lr-section-head">
+    <div>
+      <div class="lr-section-kicker">Recent activity</div>
+      <h2 class="lr-h2">The latest</h2>
     </div>
-    <div class="tx-modal-footer">
-        <button type="button" class="btn-secondary" onclick="closeTxModal()">Cancel</button>
-        <button type="submit" form="tx-form" class="btn-primary" id="tx-save-btn">Save Transaction</button>
+    <div class="lr-tabs">
+      <button class="lr-tab is-active" type="button" data-filter="all">All</button>
+      <button class="lr-tab" type="button" data-filter="review">To review · {{ review_stats.unreviewed }}</button>
+      <button class="lr-tab" type="button" data-filter="income">Income</button>
+      <button class="lr-tab" type="button" data-filter="large">Large</button>
     </div>
-</dialog>
+  </div>
+  <table class="lr-table dash-table">
+    <thead>
+      <tr>
+        <th class="lr-th">Merchant</th>
+        <th class="lr-th">Category</th>
+        <th class="lr-th">Date</th>
+        <th class="lr-th is-right">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in recent_transactions %}
+      <tr class="lr-tr"
+          data-review="{{ '0' if t.reviewed else '1' }}"
+          data-income="{{ '1' if t.amount > 0 else '0' }}"
+          data-large="{{ '1' if t.amount|abs > 100 else '0' }}">
+        <td class="lr-td lr-td-merchant {% if not t.reviewed %}has-review{% endif %}">
+          <span>{{ t.description }}</span>
+          {% if t.notes %}<span class="lr-td-note">· {{ t.notes }}</span>{% endif %}
+        </td>
+        <td class="lr-td"><span class="lr-chip">{{ t.category or 'Uncategorized' }}</span></td>
+        <td class="lr-td lr-td-date">{{ t.date_label }}</td>
+        <td class="lr-td lr-td-amt tabular {% if t.amount > 0 %}is-pos{% endif %}">
+          {% if t.amount > 0 %}+{% else %}−{% endif %}${{ "{:,.2f}".format(t.amount|abs) }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="dash-table-foot">
+    <em class="lr-em lr-em-muted" style="font-size: 12px;">
+      Showing <span id="activity-visible-count">{{ recent_transactions|length }}</span>
+      of {{ recent_transactions|length }} loaded transactions
+      {% if total_transactions > recent_transactions|length %}({{ total_transactions }} total){% endif %}
+    </em>
+    <a href="{{ url_for('export_csv') }}" class="lr-link-arrow">Export full activity →</a>
+  </div>
+</section>
+
+{% endif %}
 
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-{% if transactions or accounts %}
 <script>
-// ============================================================
-// DATA FROM FLASK
-// ============================================================
-var DASH = {
-    totalTransactions: {{ total_transactions|default(0) }},
-    totalIncome: {{ total_income|default(0) }},
-    totalSpent: {{ total_spent|default(0) }},
-    accountCount: {{ accounts|length }},
-    reviewStats: {
-        total: {{ review_stats.total|default(0) }},
-        reviewed: {{ review_stats.reviewed|default(0) }},
-        unreviewed: {{ review_stats.unreviewed|default(0) }}
-    },
-    accounts: [
-        {% for acct in accounts %}
-        { id: {{ acct.id }}, name: {{ acct.name|tojson }}, institution: {{ acct.institution|tojson }}, type: {{ acct.account_type|tojson }} }{% if not loop.last %},{% endif %}
-        {% endfor %}
-    ],
-    transactions: [
-        {% for t in transactions[:25] %}
-        { id: {{ t.id }}, account_id: {{ t.account_id }}, date: {{ t.date|tojson }}, desc: {{ t.description|tojson }}, amount: {{ t.amount }}, category: {{ t.category|tojson }}, reviewed: {{ 'true' if t.reviewed else 'false' }}, notes: {{ (t.notes or '')|tojson }} }{% if not loop.last %},{% endif %}
-        {% endfor %}
-    ],
-    allCategories: {{ (transactions | map(attribute='category') | unique | sort | list) | tojson }},
-    hasMore: {{ (transactions|length > 25)|tojson }},
-    budgetSummary: {{ budget_summary|tojson }}
-};
-
-// ============================================================
-// WIDGET CATALOG
-// ============================================================
-var WIDGETS = {
-    'balance-hero':  { n: 'Balance Hero',     i: '💰', sz: 'full' },
-    'stats-row':     { n: 'Stats Row',        i: '📊', sz: 'full' },
-    'stat-single':   { n: 'Single Stat',      i: '🔢', sz: 'side' },
-    'line-chart':    { n: 'Line Chart',       i: '📈', sz: 'main' },
-    'area-chart':    { n: 'Area Chart',       i: '🏔️', sz: 'half' },
-    'bar-chart':     { n: 'Bar Chart',        i: '📊', sz: 'half' },
-    'donut':         { n: 'Donut Chart',      i: '🍩', sz: 'half' },
-    'horiz-bars':    { n: 'Category Bars',    i: '📏', sz: 'half' },
-    'sparklines':    { n: 'Sparklines',       i: '〰️', sz: 'half' },
-    'transactions':  { n: 'Transactions',     i: '📋', sz: 'main' },
-    'budget-bars':   { n: 'Budget Progress',  i: '🎯', sz: 'side' },
-    'accounts':      { n: 'Account Cards',    i: '🏦', sz: 'side' },
-    'net-worth':     { n: 'Net Worth',        i: '💎', sz: 'half' },
-    'quick-actions': { n: 'Quick Actions',    i: '⚡', sz: 'side' },
-    'top-cats':      { n: 'Top Categories',   i: '🏷️', sz: 'half' },
-    'month-compare': { n: 'Month vs Month',   i: '📅', sz: 'half' },
-    'alerts':        { n: 'Alerts',           i: '🔔', sz: 'side' },
-    'ascii-chart':   { n: 'ASCII Chart',      i: '▓░', sz: 'main' }
-};
-
-var DEFAULT_LAYOUT = ['stats-row', 'line-chart', 'transactions', 'accounts', 'budget-bars', 'alerts', 'quick-actions'];
-
-// ============================================================
-// STATE
-// ============================================================
-var layout = [];
-var isEditing = false;
-var draggingIdx = null;
-var dragOverIdx = null;
-var chartInstances = {};
-var monthlyData = null;
-var categoryData = null;
-var allCategories = DASH.allCategories.slice();
-
-// SVG icon helpers (Lucide-style inline SVG)
-function iconEdit() {
-    return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
-}
-function iconTrash() {
-    return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
-}
-
-// ============================================================
-// HELPERS
-// ============================================================
-function escHtml(s) {
-    return String(s)
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-
-function fmtMoney(n) {
-    return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function accountIcon(inst) {
-    var icons = { chase:'🏦', amex:'💳', fidelity:'📊', coinbase:'🪙', robinhood:'🪶', marcus:'🏛️', schwab:'📈' };
-    return icons[(inst||'').toLowerCase()] || '💰';
-}
-
-function card(content) { return '<div class="widget-card">' + content + '</div>'; }
-
-// ============================================================
-// WIDGET RENDERERS
-// ============================================================
-var RENDERERS = {
-
-    'balance-hero': function(idx) {
-        var net = DASH.totalIncome + DASH.totalSpent;
-        var cls = net >= 0 ? 'income' : 'spent';
-        return card(
-            '<div class="widget-label">Net Balance</div>' +
-            '<div class="stat-value ' + cls + '" style="font-size:2rem;margin-bottom:4px;">' +
-            (net >= 0 ? '+' : '&minus;') + fmtMoney(Math.abs(net)) + '</div>' +
-            '<div style="font-size:12px;color:var(--text-muted);">+' + fmtMoney(DASH.totalIncome) + ' income &middot; &minus;' + fmtMoney(Math.abs(DASH.totalSpent)) + ' spent</div>'
-        );
-    },
-
-    'stats-row': function(idx) {
-        var stats = [
-            { label: 'Transactions', value: DASH.totalTransactions.toLocaleString(), cls: '' },
-            { label: 'Total Income',  value: '+' + fmtMoney(DASH.totalIncome),         cls: 'income' },
-            { label: 'Total Spent',   value: '&minus;' + fmtMoney(Math.abs(DASH.totalSpent)), cls: 'spent' },
-            { label: 'Accounts',      value: DASH.accountCount.toString(),             cls: '' }
-        ];
-        var html = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-md);">';
-        stats.forEach(function(s) {
-            html += '<div><div class="widget-label">' + s.label + '</div>' +
-                '<div class="stat-value ' + s.cls + '" style="font-size:1.4rem;">' + s.value + '</div></div>';
-        });
-        html += '</div>';
-        return card(html);
-    },
-
-    'stat-single': function(idx) {
-        var net = DASH.totalIncome + DASH.totalSpent;
-        var rate = DASH.totalIncome > 0 ? ((net / DASH.totalIncome) * 100).toFixed(1) : '0.0';
-        return card(
-            '<div class="widget-label">Net Savings</div>' +
-            '<div class="stat-value ' + (net >= 0 ? 'income' : 'spent') + '" style="font-size:1.5rem;margin-bottom:4px;">' +
-            (net >= 0 ? '+' : '&minus;') + fmtMoney(Math.abs(net)) + '</div>' +
-            '<div style="font-size:12px;color:var(--text-muted);">' + rate + '% savings rate</div>'
-        );
-    },
-
-    'line-chart': function(idx) {
-        return card('<div class="widget-heading">Balance Over Time</div>' +
-            '<div style="position:relative;height:160px;"><canvas id="canvas-line-' + idx + '"></canvas></div>');
-    },
-
-    'area-chart': function(idx) {
-        return card('<div class="widget-heading">Spending Trend</div>' +
-            '<div style="position:relative;height:140px;"><canvas id="canvas-area-' + idx + '"></canvas></div>');
-    },
-
-    'bar-chart': function(idx) {
-        return card('<div class="widget-heading">Monthly Balance</div>' +
-            '<div style="position:relative;height:140px;"><canvas id="canvas-bar-' + idx + '"></canvas></div>');
-    },
-
-    'donut': function(idx) {
-        return card('<div class="widget-heading">Spending by Category</div>' +
-            '<div style="position:relative;height:180px;"><canvas id="canvas-donut-' + idx + '"></canvas></div>');
-    },
-
-    'horiz-bars': function(idx) {
-        return card('<div class="widget-heading">Category Breakdown</div>' +
-            '<div id="horiz-bars-' + idx + '"><div style="color:var(--text-muted);font-size:13px;">Loading&hellip;</div></div>');
-    },
-
-    'sparklines': function(idx) {
-        return card('<div class="widget-heading">Trends</div>' +
-            '<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">Add more months of data to see spending trends.</div>');
-    },
-
-    'transactions': function(idx) {
-        // Search + filter bar
-        var html = '<div class="search-bar" style="margin-bottom:var(--space-md);">' +
-            '<input type="text" id="transaction-search" placeholder="Search transactions\u2026" class="search-input" aria-label="Search transactions">' +
-            '<select id="category-filter" class="search-select" aria-label="Filter by category">' +
-            '<option value="">All Categories</option>';
-        var seenCats = {};
-        DASH.transactions.forEach(function(t) {
-            if (!seenCats[t.category]) {
-                seenCats[t.category] = true;
-                html += '<option value="' + escHtml(t.category) + '">' + escHtml(t.category) + '</option>';
-            }
-        });
-        html += '</select></div>';
-
-        // Header row
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md);">' +
-            '<div class="widget-heading" style="margin:0;">Recent Activity</div>';
-        if (DASH.reviewStats.unreviewed > 0) {
-            html += '<div class="review-badge"><span class="review-count">' + DASH.reviewStats.unreviewed + '</span> to review</div>';
-        }
-        html += '</div>';
-
-        // Timeline
-        html += '<div class="activity-timeline" id="activity-timeline">';
-        DASH.transactions.forEach(function(t) {
-            var isIncome = t.amount > 0;
-            var absAmt = Math.abs(t.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            var sign = isIncome ? '+' : '&minus;';
-            html +=
-                '<div class="timeline-item' + (t.reviewed ? ' item-reviewed' : '') +
-                '" data-category="' + escHtml(t.category) +
-                '" data-description="' + escHtml(t.desc.toLowerCase()) +
-                '" data-id="' + t.id + '">' +
-                '<div class="timeline-dot ' + (isIncome ? 'dot-income' : 'dot-spent') + '"></div>' +
-                '<div class="timeline-content">' +
-                '<div class="timeline-row">' +
-                '<button class="review-check' + (t.reviewed ? ' checked' : '') +
-                '" onclick="toggleReview(' + t.id + ',' + (t.reviewed ? 'false' : 'true') + ')" ' +
-                'aria-label="' + (t.reviewed ? 'Mark as unreviewed' : 'Mark as reviewed') + '">' +
-                (t.reviewed ? '&#x2713;' : '') + '</button>' +
-                '<div class="timeline-desc">' + escHtml(t.desc) + '</div>' +
-                '<div class="timeline-amount ' + (isIncome ? 'income' : 'spent') + '" style="font-variant-numeric:tabular-nums;">' +
-                sign + '$' + absAmt + '</div>' +
-                // Edit + Delete action buttons (blueprint: row actions with aria-label)
-                '<div class="tx-actions">' +
-                '<button class="tx-action-btn" onclick="openTxModal(' + t.id + ')" aria-label="Edit transaction">' + iconEdit() + '</button>' +
-                '<button class="tx-action-btn delete" onclick="deleteTx(' + t.id + ',\'' + escHtml(t.desc).replace(/'/g,'\\\'') + '\')" aria-label="Delete transaction">' + iconTrash() + '</button>' +
-                '</div>' +
-                '</div>' +
-                '<div class="timeline-meta">' +
-                '<span class="timeline-date">' + escHtml(t.date) + '</span>' +
-                '<span class="category-badge category-editable" onclick="editCategory(this,' + t.id + ')" data-tid="' + t.id + '">' +
-                escHtml(t.category) + '</span>' +
-                '</div></div></div>';
-        });
-        html += '</div>';
-
-        if (DASH.hasMore) {
-            html += '<p class="muted" style="text-align:center;margin-top:var(--space-md);">Showing 25 of {{ transactions|length }} transactions</p>';
-        }
-        return card(html);
-    },
-
-    'budget-bars': function(idx) {
-        var b = DASH.budgetSummary || {};
-        if (!b.has_budgets) {
-            return card('<div class="widget-heading">Budget Snapshot</div>' +
-                '<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">No budget set for this month yet.</div>' +
-                '<a href="/budget" class="btn-secondary" style="font-size:12px;margin-top:4px;">Set budgets</a>');
-        }
-        var status = b.remaining >= 0 ? fmtMoney(Math.abs(b.remaining)) + ' left' : fmtMoney(Math.abs(b.remaining)) + ' over';
-        var cls = b.remaining >= 0 ? 'income' : 'spent';
-        return card('<div class="widget-heading">Budget Snapshot</div>' +
-            '<div class="stat-value ' + cls + '" style="font-size:1.3rem;margin-bottom:4px;">' + status + '</div>' +
-            '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">' + b.percent + '% of ' + fmtMoney(b.total_budgeted) + ' spent</div>' +
-            '<div class="budget-mini-bar"><span style="width:' + b.percent + '%"></span></div>' +
-            '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">' +
-            '<span class="category-badge">' + b.ok_count + ' ok</span>' +
-            '<span class="category-badge">' + b.over_count + ' over</span>' +
-            '<span class="category-badge">' + b.unbudgeted_count + ' unbudgeted</span>' +
-            '</div>');
-    },
-
-    'accounts': function(idx) {
-        if (!DASH.accounts.length) {
-            return card('<div class="widget-heading">Accounts</div><div style="color:var(--text-muted);font-size:13px;">No accounts yet.</div>');
-        }
-        var html = '<div class="widget-heading">Accounts</div><div style="display:flex;flex-direction:column;gap:8px;">';
-        DASH.accounts.forEach(function(acct) {
-            html += '<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-body);border-radius:var(--radius-sm);border:var(--border-width) solid var(--border-main);">' +
-                '<span style="font-size:1.2rem;">' + accountIcon(acct.institution) + '</span>' +
-                '<div style="flex:1;min-width:0;">' +
-                '<div style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(acct.name) + '</div>' +
-                '<div style="font-size:11px;color:var(--text-muted);">' +
-                escHtml(acct.type.replace(/_/g,' ').replace(/\b\w/g, function(c){return c.toUpperCase();})) +
-                '</div></div></div>';
-        });
-        html += '</div>';
-        return card(html);
-    },
-
-    'net-worth': function(idx) {
-        return card('<div class="widget-label">Net Worth</div>' +
-            '<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">Net worth tracking requires investment account data.</div>');
-    },
-
-    'quick-actions': function(idx) {
-        var actions = [
-            { label: 'Upload',  icon: 'upload',     href: '/upload' },
-            { label: 'Budget',  icon: 'target',     href: '/budget' },
-            { label: 'Rules',   icon: 'settings-2', href: '/rules' },
-            { label: 'Export',  icon: 'download',   href: '/export.csv' }
-        ];
-        var html = '<div class="widget-heading">Quick Actions</div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">';
-        actions.forEach(function(a) {
-            html += '<a href="' + a.href + '" class="quick-action-btn">' +
-                '<i data-lucide="' + a.icon + '" style="width:18px;height:18px;"></i>' +
-                '<span>' + a.label + '</span></a>';
-        });
-        html += '</div>';
-        return card(html);
-    },
-
-    'top-cats': function(idx) {
-        return card('<div class="widget-heading">Top Categories</div>' +
-            '<div id="top-cats-' + idx + '"><div style="color:var(--text-muted);font-size:13px;">Loading&hellip;</div></div>');
-    },
-
-    'month-compare': function(idx) {
-        return card('<div class="widget-heading">Month vs Month</div>' +
-            '<div id="month-compare-' + idx + '"><div style="color:var(--text-muted);font-size:13px;">Loading&hellip;</div></div>');
-    },
-
-    'alerts': function(idx) {
-        var alerts = [];
-        if (DASH.reviewStats.unreviewed > 0) {
-            alerts.push({ icon: '📋', msg: DASH.reviewStats.unreviewed + ' transaction' + (DASH.reviewStats.unreviewed !== 1 ? 's' : '') + ' to review', color: 'var(--color-income)' });
-        }
-        var b = DASH.budgetSummary || {};
-        if (b.over && b.over.length) {
-            b.over.slice(0, 2).forEach(function(item) {
-                alerts.push({ icon: '🎯', msg: item.category + ' is over by ' + fmtMoney(Math.abs(item.remaining)), color: 'var(--color-spent)' });
-            });
-        }
-        if (b.warning && b.warning.length) {
-            b.warning.slice(0, 1).forEach(function(item) {
-                alerts.push({ icon: '⚠️', msg: item.category + ' is at ' + item.percent + '% of budget', color: '#f2b84b' });
-            });
-        }
-        if (!alerts.length) {
-            alerts.push({ icon: '✅', msg: 'All caught up! No alerts.', color: 'var(--color-income)' });
-        }
-        var html = '<div class="widget-heading">Alerts</div><div style="display:flex;flex-direction:column;gap:6px;">';
-        alerts.forEach(function(a) {
-            html += '<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;border-radius:var(--radius-sm);border-left:3px solid ' + a.color + ';background:var(--bg-body);">' +
-                '<span>' + a.icon + '</span>' +
-                '<span style="font-size:13px;color:var(--text-primary);">' + escHtml(a.msg) + '</span></div>';
-        });
-        html += '</div>';
-        return card(html);
-    },
-
-    'ascii-chart': function(idx) {
-        return card('<div class="widget-heading">Balance Trend</div>' +
-            '<pre style="font-family:var(--font-mono);font-size:11px;color:var(--color-income);line-height:1.4;margin:0;overflow-x:auto;" id="ascii-chart-' + idx + '">Loading\u2026</pre>');
+  // Activity tab filter — purely client-side.
+  (function () {
+    var tabs = document.querySelectorAll('.dash-table');
+    if (!tabs.length) return;
+    var visibleCount = document.getElementById('activity-visible-count');
+    function updateCount() {
+      if (!visibleCount) return;
+      var rows = Array.prototype.slice.call(document.querySelectorAll('.dash-table tbody tr'));
+      visibleCount.textContent = rows.filter(function (row) {
+        return row.style.display !== 'none';
+      }).length;
     }
-};
-
-// ============================================================
-// DRAG AND DROP
-// ============================================================
-function onDragStart(e, idx) {
-    draggingIdx = idx;
-    e.dataTransfer.effectAllowed = 'move';
-    setTimeout(function() {
-        var el = document.querySelector('[data-widget-idx="' + idx + '"]');
-        if (el) el.classList.add('is-dragging');
-    }, 0);
-}
-function onDragOver(e, idx) {
-    e.preventDefault();
-    if (draggingIdx === null || draggingIdx === idx) return;
-    if (dragOverIdx !== idx) {
-        clearDragOver();
-        dragOverIdx = idx;
-        var el = document.querySelector('[data-widget-idx="' + idx + '"]');
-        if (el) el.classList.add('drag-over');
-    }
-}
-function onDrop(e, idx) {
-    e.preventDefault();
-    if (draggingIdx === null || draggingIdx === idx) return;
-    var next = layout.slice();
-    var item = next.splice(draggingIdx, 1)[0];
-    next.splice(idx > draggingIdx ? idx - 1 : idx, 0, item);
-    layout = next;
-    draggingIdx = null; dragOverIdx = null;
-    saveLayout(); renderDashboard();
-}
-function onDropEnd(e) {
-    e.preventDefault();
-    if (draggingIdx === null) return;
-    var next = layout.slice();
-    var item = next.splice(draggingIdx, 1)[0];
-    next.push(item);
-    layout = next;
-    draggingIdx = null; dragOverIdx = null;
-    saveLayout(); renderDashboard();
-}
-function onDragEnd() {
-    clearDragOver();
-    var el = document.querySelector('.is-dragging');
-    if (el) el.classList.remove('is-dragging');
-    draggingIdx = null; dragOverIdx = null;
-}
-function clearDragOver() {
-    document.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); });
-}
-
-// ============================================================
-// LAYOUT MANAGEMENT
-// ============================================================
-function addWidget(wid) { layout.push(wid); saveLayout(); renderDashboard(); }
-function removeWidget(idx) { layout.splice(idx, 1); saveLayout(); renderDashboard(); }
-function saveLayout() {
-    localStorage.setItem('dashboard-layout', JSON.stringify(layout));
-    var badge = document.getElementById('widget-count-badge');
-    if (badge) badge.textContent = layout.length + ' widget' + (layout.length !== 1 ? 's' : '');
-}
-function toggleEditMode() {
-    isEditing = !isEditing;
-    var btn = document.getElementById('toggle-edit-btn');
-    if (btn) btn.textContent = isEditing ? '✕ Done Editing' : '✎ Edit Layout';
-    var palette = document.getElementById('widget-palette');
-    if (palette) palette.classList.toggle('palette-visible', isEditing);
-    renderDashboard();
-}
-
-// ============================================================
-// RENDER
-// ============================================================
-function renderPalette() {
-    var chips = document.getElementById('palette-chips');
-    if (!chips) return;
-    chips.innerHTML = '';
-    Object.keys(WIDGETS).forEach(function(wid) {
-        var w = WIDGETS[wid];
-        var btn = document.createElement('button');
-        btn.className = 'widget-chip';
-        btn.innerHTML = '<span style="font-size:1.1em;">' + w.i + '</span>' + escHtml(w.n);
-        btn.title = w.sz === 'wide' ? 'Full width' : 'Half width';
-        btn.onclick = function() { addWidget(wid); };
-        chips.appendChild(btn);
+    document.querySelectorAll('[data-filter]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var f = btn.getAttribute('data-filter');
+        document.querySelectorAll('[data-filter]').forEach(function (b) { b.classList.remove('is-active'); });
+        btn.classList.add('is-active');
+        document.querySelectorAll('.dash-table tbody tr').forEach(function (row) {
+          if (f === 'all') { row.style.display = ''; return; }
+          var on = row.getAttribute('data-' + f) === '1';
+          row.style.display = on ? '' : 'none';
+        });
+        updateCount();
+      });
     });
-}
-
-function destroyCharts() {
-    Object.keys(chartInstances).forEach(function(k) {
-        try { chartInstances[k].destroy(); } catch(e) {}
-    });
-    chartInstances = {};
-}
-
-function renderDashboard() {
-    destroyCharts();
-    var grid = document.getElementById('widget-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    var mainCol = null;
-    var sideCol = null;
-    var contentGrid = null;
-
-    contentGrid = document.createElement('div');
-    contentGrid.className = 'dashboard-content-grid' + (isEditing ? ' is-editing' : '');
-    mainCol = document.createElement('div');
-    mainCol.className = 'dashboard-main-col';
-    sideCol = document.createElement('div');
-    sideCol.className = 'dashboard-side-col';
-    contentGrid.appendChild(mainCol);
-    contentGrid.appendChild(sideCol);
-
-    layout.forEach(function(wid, idx) {
-        var w = WIDGETS[wid];
-        if (!w || !RENDERERS[wid]) return;
-        var wrap = document.createElement('div');
-        var sizeClass = w.sz ? ' widget-' + w.sz : '';
-        if (w.sz === 'wide') sizeClass = ' widget-full';
-        wrap.className = 'widget-wrap' + sizeClass;
-        wrap.setAttribute('data-widget-idx', idx);
-
-        if (isEditing) {
-            wrap.setAttribute('draggable', 'true');
-            wrap.style.cursor = 'grab';
-            wrap.addEventListener('dragstart', (function(i){ return function(e){ onDragStart(e, i); }; })(idx));
-            wrap.addEventListener('dragover',  (function(i){ return function(e){ onDragOver(e, i); }; })(idx));
-            wrap.addEventListener('drop',      (function(i){ return function(e){ onDrop(e, i); }; })(idx));
-            wrap.addEventListener('dragend', onDragEnd);
-
-            var removeBtn = document.createElement('button');
-            removeBtn.className = 'widget-remove-btn';
-            removeBtn.innerHTML = '&times;';
-            removeBtn.title = 'Remove widget';
-            removeBtn.setAttribute('aria-label', 'Remove ' + w.n + ' widget');
-            removeBtn.addEventListener('click', (function(i){ return function(e){ e.stopPropagation(); removeWidget(i); }; })(idx));
-            wrap.appendChild(removeBtn);
-        }
-
-        var inner = document.createElement('div');
-        inner.innerHTML = RENDERERS[wid](idx);
-        wrap.appendChild(inner);
-
-        if (w.sz === 'main' || w.sz === 'side') {
-            (w.sz === 'side' ? sideCol : mainCol).appendChild(wrap);
-        } else {
-            grid.appendChild(wrap);
-        }
-    });
-
-    if (contentGrid && (mainCol.children.length || sideCol.children.length)) {
-        grid.appendChild(contentGrid);
-    }
-
-    // Trailing drop zone in edit mode
-    if (isEditing) {
-        var dz = document.createElement('div');
-        dz.className = 'widget-drop-zone widget-wide';
-        dz.textContent = 'Drop widgets here';
-        dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('drop-zone-active'); dz.textContent = 'Drop here'; });
-        dz.addEventListener('dragleave', function() { dz.classList.remove('drop-zone-active'); dz.textContent = 'Drop widgets here'; });
-        dz.addEventListener('drop', function(e) { dz.classList.remove('drop-zone-active'); onDropEnd(e); });
-        grid.appendChild(dz);
-    }
-
-    var badge = document.getElementById('widget-count-badge');
-    if (badge) badge.textContent = layout.length + ' widget' + (layout.length !== 1 ? 's' : '');
-
-    // Re-run Lucide icon replacement on newly rendered elements
-    if (window.lucide) lucide.createIcons();
-
-    initAsyncWidgets();
-    initSearchFilter();
-}
-
-// ============================================================
-// ASYNC WIDGET DATA
-// ============================================================
-function getChartColors() {
-    var cs = getComputedStyle(document.documentElement);
-    function v(n) { return cs.getPropertyValue(n).trim(); }
-    return {
-        text:    v('--text-secondary') || '#6b5a45',
-        grid:    v('--border-main')    || '#e0d5c5',
-        income:  v('--color-income')   || '#3d6b42',
-        spent:   v('--color-spent')    || '#b53a4a',
-        accent:  v('--accent')         || '#b5651d',
-        card:    v('--bg-card')        || '#ffffff',
-        palette: ['#d1495b','#457b9d','#588157','#e9c46a','#e76f51','#c4956a','#8b6914','#a08c72']
-    };
-}
-
-function initAsyncWidgets() {
-    var needsMonthly = ['line-chart','area-chart','bar-chart','month-compare','ascii-chart']
-        .some(function(w){ return layout.indexOf(w) !== -1; });
-    var needsCategory = ['donut','horiz-bars','top-cats']
-        .some(function(w){ return layout.indexOf(w) !== -1; });
-
-    if (needsMonthly) {
-        if (monthlyData) renderMonthlyWidgets(monthlyData);
-        else fetch('/api/monthly-summary').then(function(r){ return r.json(); }).then(function(d){ monthlyData = d; renderMonthlyWidgets(d); });
-    }
-    if (needsCategory) {
-        if (categoryData) renderCategoryWidgets(categoryData);
-        else fetch('/api/spending-by-category').then(function(r){ return r.json(); }).then(function(d){ categoryData = d; renderCategoryWidgets(d); });
-    }
-}
-
-function renderMonthlyWidgets(data) {
-    if (!data || !data.length) return;
-    var colors = getChartColors();
-    var labels = data.map(function(d){ return d.month; });
-    var balances = data.map(function(d){ return d.balance || 0; });
-
-    layout.forEach(function(wid, idx) {
-        var canvas;
-        if (wid === 'line-chart') {
-            canvas = document.getElementById('canvas-line-' + idx);
-            if (!canvas) return;
-            chartInstances['line-' + idx] = new Chart(canvas.getContext('2d'), {
-                type: 'line',
-                data: { labels: labels, datasets: [{ label: 'Balance', data: balances,
-                    borderColor: colors.income, backgroundColor: colors.income + '25', fill: true, tension: 0.35, pointRadius: 3 }] },
-                options: { responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c){ return '$' + c.parsed.y.toLocaleString('en-US',{minimumFractionDigits:2}); } } } },
-                    scales: { x: { offset: false, ticks: { color: colors.text, maxTicksLimit: 7 }, grid: { color: colors.grid } },
-                        y: { ticks: { color: colors.text, callback: function(v){ return '$' + v.toLocaleString(); } }, grid: { color: colors.grid } } } }
-            });
-        }
-        if (wid === 'area-chart') {
-            canvas = document.getElementById('canvas-area-' + idx);
-            if (!canvas) return;
-            chartInstances['area-' + idx] = new Chart(canvas.getContext('2d'), {
-                type: 'line',
-                data: { labels: labels, datasets: [{ label: 'Balance', data: balances,
-                    borderColor: colors.spent, backgroundColor: colors.spent + '25', fill: true, tension: 0.4, pointRadius: 2 }] },
-                options: { responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { x: { ticks: { color: colors.text, maxTicksLimit: 7 }, grid: { color: colors.grid } },
-                        y: { ticks: { color: colors.text, callback: function(v){ return '$' + v.toLocaleString(); } }, grid: { color: colors.grid } } } }
-            });
-        }
-        if (wid === 'bar-chart') {
-            canvas = document.getElementById('canvas-bar-' + idx);
-            if (!canvas) return;
-            chartInstances['bar-' + idx] = new Chart(canvas.getContext('2d'), {
-                type: 'bar',
-                data: { labels: labels, datasets: [{ label: 'Balance', data: balances,
-                    backgroundColor: balances.map(function(b){ return b >= 0 ? colors.income + 'cc' : colors.spent + 'cc'; }),
-                    borderRadius: 4 }] },
-                options: { responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { x: { ticks: { color: colors.text, maxTicksLimit: 7 }, grid: { display: false } },
-                        y: { ticks: { color: colors.text, callback: function(v){ return '$' + v.toLocaleString(); } }, grid: { color: colors.grid } } } }
-            });
-        }
-        if (wid === 'month-compare') {
-            var el = document.getElementById('month-compare-' + idx);
-            if (!el || data.length < 2) { if (el) el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Not enough data yet.</div>'; return; }
-            var cur = data[data.length - 1], prev = data[data.length - 2];
-            var cb = cur.balance || 0, pb = prev.balance || 0, diff = cb - pb;
-            var pct = pb !== 0 ? ((diff / Math.abs(pb)) * 100).toFixed(1) : '0.0';
-            el.innerHTML =
-                '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;">' +
-                '<div><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">' + cur.month + '</div>' +
-                '<div style="font-size:1.2rem;font-weight:700;font-family:var(--font-mono);color:' + (cb >= 0 ? 'var(--color-income)' : 'var(--color-spent)') + ';">' + (cb >= 0 ? '+' : '&minus;') + fmtMoney(Math.abs(cb)) + '</div></div>' +
-                '<div><div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">' + prev.month + '</div>' +
-                '<div style="font-size:1.2rem;font-weight:700;font-family:var(--font-mono);color:var(--text-secondary);">' + (pb >= 0 ? '+' : '&minus;') + fmtMoney(Math.abs(pb)) + '</div></div></div>' +
-                '<div style="padding:6px 10px;border-radius:var(--radius-sm);background:var(--bg-body);font-size:12px;text-align:center;color:' + (diff >= 0 ? 'var(--color-income)' : 'var(--color-spent)') + ';">' +
-                (diff >= 0 ? '&#x2191;' : '&#x2193;') + ' ' + Math.abs(pct) + '% ' + (diff >= 0 ? 'gain' : 'drop') + ' vs last month</div>';
-        }
-        if (wid === 'ascii-chart') {
-            var el = document.getElementById('ascii-chart-' + idx);
-            if (!el || !data.length) return;
-            var slice = data.slice(-12);
-            var bals = slice.map(function(d){ return d.balance || 0; });
-            var maxB = Math.max.apply(null, bals), minB = Math.min.apply(null, bals);
-            var lines = [];
-            for (var row = 4; row >= 0; row--) {
-                var threshold = minB + ((maxB - minB) / 5) * (row + 1);
-                var label = '$' + (Math.abs(threshold) >= 1000 ? (threshold/1000).toFixed(1)+'k' : threshold.toFixed(0));
-                while (label.length < 7) label = ' ' + label;
-                var line = label + ' \u2524';
-                bals.forEach(function(b){ line += b >= threshold ? '\u2588' : '\u2591'; line += ' '; });
-                lines.push(line);
-            }
-            lines.push('        \u2514' + bals.map(function(){ return '\u2500\u2500'; }).join(''));
-            lines.push('         ' + slice.map(function(d, i){ return i % 2 === 0 ? d.month.slice(0,3) + ' ' : '    '; }).join(''));
-            el.textContent = lines.join('\n');
-        }
-    });
-}
-
-function renderCategoryWidgets(data) {
-    if (!data || !data.labels || !data.labels.length) return;
-    var colors = getChartColors();
-    layout.forEach(function(wid, idx) {
-        if (wid === 'donut') {
-            var canvas = document.getElementById('canvas-donut-' + idx);
-            if (!canvas) return;
-            chartInstances['donut-' + idx] = new Chart(canvas.getContext('2d'), {
-                type: 'doughnut',
-                data: { labels: data.labels,
-                    datasets: [{ data: data.values, backgroundColor: colors.palette.slice(0, data.labels.length), borderWidth: 2, borderColor: colors.card }] },
-                options: { responsive: true, maintainAspectRatio: false, cutout: '60%',
-                    plugins: { legend: { position: 'bottom', labels: { color: colors.text, padding: 8, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } } },
-                        tooltip: { callbacks: { label: function(c) {
-                            var total = c.dataset.data.reduce(function(a,b){return a+b;},0);
-                            return c.label + ': $' + c.parsed.toLocaleString('en-US',{minimumFractionDigits:2}) + ' (' + ((c.parsed/total)*100).toFixed(1) + '%)';
-                        } } } } }
-            });
-        }
-        if (wid === 'horiz-bars') {
-            var el = document.getElementById('horiz-bars-' + idx);
-            if (!el) return;
-            var total = data.values.reduce(function(a,b){return a+b;},0);
-            var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
-            data.labels.slice(0,6).forEach(function(label, i) {
-                var val = data.values[i], pct = total > 0 ? (val/total*100) : 0;
-                html += '<div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">' +
-                    '<span style="color:var(--text-secondary);">' + escHtml(label) + '</span>' +
-                    '<span style="font-family:var(--font-mono);">&minus;$' + val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span></div>' +
-                    '<div style="height:4px;background:var(--border-main);border-radius:2px;">' +
-                    '<div style="height:100%;width:' + pct.toFixed(1) + '%;background:var(--accent);border-radius:2px;"></div></div></div>';
-            });
-            if (data.labels.length > 6) html += '<div style="font-size:11px;color:var(--text-muted);text-align:center;">+ ' + (data.labels.length-6) + ' more</div>';
-            html += '</div>';
-            el.innerHTML = html;
-        }
-        if (wid === 'top-cats') {
-            var el = document.getElementById('top-cats-' + idx);
-            if (!el) return;
-            var total = data.values.reduce(function(a,b){return a+b;},0);
-            var html = '';
-            data.labels.slice(0,5).forEach(function(label, i) {
-                var val = data.values[i], pct = total > 0 ? ((val/total)*100).toFixed(1) : '0.0';
-                html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;' +
-                    (i < Math.min(data.labels.length,5)-1 ? 'border-bottom:1px solid var(--border-main);' : '') + '">' +
-                    '<div style="display:flex;align-items:center;gap:6px;"><span style="font-size:10px;font-weight:600;color:var(--text-muted);width:14px;text-align:right;">' + (i+1) + '</span>' +
-                    '<span style="font-size:13px;">' + escHtml(label) + '</span></div>' +
-                    '<div style="display:flex;gap:8px;align-items:baseline;">' +
-                    '<span style="font-size:12px;font-family:var(--font-mono);">&minus;$' + val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span>' +
-                    '<span style="font-size:10px;color:var(--text-muted);width:34px;text-align:right;">' + pct + '%</span></div></div>';
-            });
-            el.innerHTML = html || '<div style="color:var(--text-muted);font-size:13px;">No spending data.</div>';
-        }
-    });
-}
-
-// ============================================================
-// SEARCH & FILTER
-// ============================================================
-function initSearchFilter() {
-    var search = document.getElementById('transaction-search');
-    var filter = document.getElementById('category-filter');
-    function run() {
-        var s = search ? search.value.toLowerCase() : '';
-        var c = filter ? filter.value : '';
-        document.querySelectorAll('.timeline-item').forEach(function(item) {
-            var ms = !s || (item.getAttribute('data-description')||'').indexOf(s) !== -1;
-            var mc = !c || item.getAttribute('data-category') === c;
-            item.style.display = (ms && mc) ? '' : 'none';
-        });
-    }
-    if (search) search.addEventListener('input', run);
-    if (filter) filter.addEventListener('change', run);
-}
-
-// ============================================================
-// REVIEW TOGGLE
-// ============================================================
-function toggleReview(id, reviewed) {
-    fetch('/api/review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: id, reviewed: reviewed })
-    }).then(function(r){ return r.json(); }).then(function(data) {
-        if (!data.ok) return;
-        var item = document.querySelector('[data-id="' + id + '"]');
-        var btn = item ? item.querySelector('.review-check') : null;
-        if (item && btn) {
-            if (reviewed) { item.classList.add('item-reviewed'); btn.classList.add('checked'); btn.innerHTML = '&#x2713;'; btn.setAttribute('aria-label','Mark as unreviewed'); }
-            else { item.classList.remove('item-reviewed'); btn.classList.remove('checked'); btn.innerHTML = ''; btn.setAttribute('aria-label','Mark as reviewed'); }
-        }
-        var badge = document.querySelector('.review-count');
-        if (badge) { var cur = parseInt(badge.textContent)||0; badge.textContent = reviewed ? Math.max(0,cur-1) : cur+1; }
-        DASH.transactions.forEach(function(t){ if (t.id===id) t.reviewed=!!reviewed; });
-    });
-}
-
-// ============================================================
-// INLINE CATEGORY EDITING
-// ============================================================
-function editCategory(badge, tid) {
-    if (badge.querySelector('select')) return;
-    var current = badge.textContent.trim();
-    var select = document.createElement('select');
-    select.className = 'category-select-inline';
-    var seen = {};
-    allCategories.forEach(function(cat) {
-        if (!seen[cat]) { seen[cat]=true; var opt=document.createElement('option'); opt.value=cat; opt.textContent=cat; if(cat===current) opt.selected=true; select.appendChild(opt); }
-    });
-    var customOpt = document.createElement('option'); customOpt.value='__custom__'; customOpt.textContent='+ New category\u2026'; select.appendChild(customOpt);
-    badge.textContent=''; badge.appendChild(select); select.focus();
-    function save(newCat) {
-        if (!newCat||newCat===current) { badge.textContent=current; return; }
-        fetch('/api/update-category',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:tid,category:newCat}) })
-        .then(function(r){ return r.json(); }).then(function(data) {
-            if(data.ok){ badge.textContent=newCat; var item=badge.closest('.timeline-item'); if(item) item.setAttribute('data-category',newCat); if(allCategories.indexOf(newCat)===-1) allCategories.push(newCat); DASH.transactions.forEach(function(t){ if(t.id===tid) t.category=newCat; }); }
-            else { badge.textContent=current; }
-        });
-    }
-    select.addEventListener('change', function() { if(select.value==='__custom__'){ var c=prompt('Enter new category name:'); if(c&&c.trim()) save(c.trim()); else badge.textContent=current; } else save(select.value); });
-    select.addEventListener('blur', function(){ setTimeout(function(){ if(badge.querySelector('select')) badge.textContent=current; },150); });
-}
-
-// ============================================================
-// ADD / EDIT / DELETE TRANSACTION MODAL
-// (blueprint wireframe: type, date, account, amount, category, merchant, notes)
-// ============================================================
-var editingTxId = null;
-
-function populateCategorySelect() {
-    var sel = document.getElementById('tx-category');
-    if (!sel) return;
-    sel.innerHTML = '';
-    var categories = allCategories.length ? allCategories : ['Uncategorized', 'Food & Drink', 'Groceries', 'Shopping', 'Transportation', 'Housing', 'Utilities', 'Income'];
-    categories.forEach(function(cat) {
-        var opt = document.createElement('option');
-        opt.value = cat; opt.textContent = cat;
-        sel.appendChild(opt);
-    });
-    var custom = document.createElement('option'); custom.value='__custom__'; custom.textContent='+ New category\u2026'; sel.appendChild(custom);
-    // default
-    if (sel.options.length && !editingTxId) {
-        var idx = Array.from(sel.options).findIndex(function(o){ return o.value==='Uncategorized'; });
-        if (idx>=0) sel.selectedIndex=idx;
-    }
-}
-
-function openTxModal(txId) {
-    var modal = document.getElementById('tx-modal');
-    if (!modal) return;
-
-    editingTxId = txId || null;
-    var title = document.getElementById('tx-modal-title');
-    if (title) title.textContent = txId ? 'Edit Transaction' : 'Add Transaction';
-    var saveBtn = document.getElementById('tx-save-btn');
-    if (saveBtn) saveBtn.textContent = txId ? 'Save Changes' : 'Save Transaction';
-
-    // Set today's date as default
-    var dateInput = document.getElementById('tx-date');
-    var today = new Date().toISOString().split('T')[0];
-
-    // Populate categories
-    populateCategorySelect();
-
-    // Pre-fill form for edit
-    if (txId) {
-        var tx = DASH.transactions.find(function(t){ return t.id===txId; });
-        if (tx) {
-            if (dateInput) dateInput.value = tx.date;
-            document.getElementById('tx-amount').value = Math.abs(tx.amount).toFixed(2);
-            document.getElementById('tx-description').value = tx.desc;
-            document.getElementById('tx-notes').value = tx.notes || '';
-            // Set type radio
-            var type = tx.amount >= 0 ? 'income' : 'expense';
-            document.querySelector('input[name="tx-type"][value="' + type + '"]').checked = true;
-            // Set category
-            var catSel = document.getElementById('tx-category');
-            if (catSel) {
-                var opt = Array.from(catSel.options).find(function(o){ return o.value===tx.category; });
-                if (opt) catSel.value = tx.category;
-            }
-            // Set account
-            var acctSel = document.getElementById('tx-account');
-            if (acctSel && tx.account_id) acctSel.value = tx.account_id;
-        }
-    } else {
-        if (dateInput) dateInput.value = today;
-        document.getElementById('tx-amount').value = '';
-        document.getElementById('tx-description').value = '';
-        document.getElementById('tx-notes').value = '';
-        var accountNameInput = document.getElementById('tx-account-name');
-        if (accountNameInput) accountNameInput.value = 'Main Checking';
-        document.querySelector('input[name="tx-type"][value="expense"]').checked = true;
-    }
-
-    // Hide error
-    var err = document.getElementById('tx-form-error');
-    if (err) err.style.display = 'none';
-
-    modal.showModal();
-    // Focus first input
-    setTimeout(function(){ if (dateInput) dateInput.focus(); }, 50);
-}
-
-function closeTxModal() {
-    var modal = document.getElementById('tx-modal');
-    if (modal) modal.close();
-    editingTxId = null;
-}
-
-function saveTxModal(e) {
-    e.preventDefault();
-    var err = document.getElementById('tx-form-error');
-
-    var type = document.querySelector('input[name="tx-type"]:checked').value;
-    var date = document.getElementById('tx-date').value;
-    var accountSelect = document.getElementById('tx-account');
-    var accountId = accountSelect ? accountSelect.value : '';
-    var accountNameInput = document.getElementById('tx-account-name');
-    var accountTypeSelect = document.getElementById('tx-account-type');
-    var amountRaw = parseFloat(document.getElementById('tx-amount').value);
-    var description = document.getElementById('tx-description').value.trim();
-    var notes = document.getElementById('tx-notes').value.trim();
-    var catSel = document.getElementById('tx-category');
-    var category = catSel ? catSel.value : 'Uncategorized';
-
-    // Validation (blueprint: "Enter a valid amount", "Choose a date to continue")
-    if (!date) { showTxError('Choose a date to continue.'); return; }
-    if (!description) { showTxError('Enter a description or merchant name.'); return; }
-    if (isNaN(amountRaw) || amountRaw <= 0) { showTxError('Enter a valid amount greater than zero.'); return; }
-    if (!accountId && accountNameInput && !accountNameInput.value.trim()) { showTxError('Enter an account name.'); return; }
-    if (!accountId && !accountNameInput) { showTxError('Select an account.'); return; }
-
-    // Handle new custom category
-    if (category === '__custom__') {
-        var custom = prompt('Enter new category name:');
-        if (!custom || !custom.trim()) { showTxError('Enter a category name.'); return; }
-        category = custom.trim();
-        if (allCategories.indexOf(category) === -1) allCategories.push(category);
-    }
-
-    // Convert to signed amount
-    var amount = type === 'expense' ? -Math.abs(amountRaw) : Math.abs(amountRaw);
-
-    var btn = document.getElementById('tx-save-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
-
-    function finishSave(finalAccountId) {
-        var url = editingTxId ? '/api/transactions/' + editingTxId : '/api/transactions';
-        var method = editingTxId ? 'PUT' : 'POST';
-        var payload = { account_id: parseInt(finalAccountId), date: date, description: description, amount: amount, category: category, notes: notes };
-
-        fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-        .then(function(r){ return r.json(); })
-        .then(function(data) {
-            if (btn) { btn.disabled = false; btn.textContent = editingTxId ? 'Save Changes' : 'Save Transaction'; }
-            if (data.ok) {
-                closeTxModal();
-                monthlyData = null; categoryData = null;
-                window.location.reload();
-            } else {
-                showTxError(data.error || 'Save failed \u2014 please try again.');
-            }
-        })
-        .catch(function() {
-            if (btn) { btn.disabled = false; btn.textContent = editingTxId ? 'Save Changes' : 'Save Transaction'; }
-            showTxError('Network error. Try again, or check your connection.');
-        });
-    }
-
-    if (accountId) {
-        finishSave(accountId);
-    } else {
-        fetch('/api/accounts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: accountNameInput.value.trim(),
-                account_type: accountTypeSelect ? accountTypeSelect.value : 'checking',
-                institution: 'manual'
-            })
-        }).then(function(r){ return r.json(); }).then(function(data) {
-            if (!data.ok) {
-                if (btn) { btn.disabled = false; btn.textContent = editingTxId ? 'Save Changes' : 'Save Transaction'; }
-                showTxError(data.error || 'Could not create account.');
-                return;
-            }
-            finishSave(data.id);
-        }).catch(function() {
-            if (btn) { btn.disabled = false; btn.textContent = editingTxId ? 'Save Changes' : 'Save Transaction'; }
-            showTxError('Could not create account.');
-        });
-    }
-}
-
-function showTxError(msg) {
-    var err = document.getElementById('tx-form-error');
-    if (err) { err.textContent = msg; err.style.display = 'block'; }
-}
-
-function deleteTx(id, desc) {
-    if (!confirm('Delete "' + desc + '"?\nThis cannot be undone.')) return;
-    fetch('/api/transactions/' + id, { method: 'DELETE' })
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-        if (data.ok) {
-            monthlyData = null; categoryData = null;
-            window.location.reload();
-        } else {
-            alert('Delete failed: ' + (data.error || 'Unknown error'));
-        }
-    });
-}
-
-// Close modal on backdrop click (native dialog behavior enhancement)
-document.addEventListener('DOMContentLoaded', function() {
-    var modal = document.getElementById('tx-modal');
-    if (modal) {
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) closeTxModal();
-        });
-    }
-});
-
-// ============================================================
-// QUICK-ACTION BUTTON STYLE (injected once)
-// ============================================================
-(function() {
-    var s = document.createElement('style');
-    s.textContent = '.quick-action-btn{display:flex;flex-direction:column;align-items:center;padding:10px 8px;background:var(--bg-body);border-radius:var(--radius-sm);border:var(--border-width) solid var(--border-main);text-decoration:none;color:var(--text-secondary);font-size:11px;gap:4px;transition:border-color var(--transition-speed)}.quick-action-btn:hover{border-color:var(--accent);color:var(--text-primary);}';
-    document.head.appendChild(s);
-})();
-
-// ============================================================
-// INIT
-// ============================================================
-(function init() {
-    var LAYOUT_VERSION = 'v4';
-    var saved = localStorage.getItem('dashboard-layout');
-    var savedVersion = localStorage.getItem('dashboard-layout-version');
-    if (saved && savedVersion === LAYOUT_VERSION) {
-        try { var p = JSON.parse(saved); layout = p.filter(function(w){ return WIDGETS[w]; }); }
-        catch(e) { layout = DEFAULT_LAYOUT.slice(); }
-    } else {
-        layout = DEFAULT_LAYOUT.slice();
-        localStorage.setItem('dashboard-layout-version', LAYOUT_VERSION);
-        localStorage.setItem('dashboard-layout', JSON.stringify(layout));
-    }
-    if (document.getElementById('widget-grid')) {
-        renderPalette();
-        renderDashboard();
-    }
-    if (window.lucide) lucide.createIcons();
-})();
+    updateCount();
+  })();
 </script>
-{% endif %}
 {% endblock %}

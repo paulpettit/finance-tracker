@@ -1,293 +1,323 @@
 {% extends "base.html" %}
+{% set current_page = 'rules' %}
 {% block title %}Rules — Finance Tracker{% endblock %}
 
 {% block content %}
-<div class="dashboard-header">
-    <h1>Rules Engine</h1>
-    <p class="dashboard-subtitle">Auto-categorize transactions as they're imported. Rules apply in priority order — first match wins.</p>
+
+{% set active_count = rules | selectattr('enabled') | list | length %}
+{% set total_count  = rules | length %}
+
+<div class="lr-page-head has-right">
+  <div>
+    <div class="lr-kicker">
+      Rules · {{ active_count }} active · {{ matched_recent }} transactions auto-categorized this month
+    </div>
+    <h1 class="lr-h1">Teach it <em class="lr-em">once</em>.</h1>
+    <p class="lr-lede">
+      Rules match transactions by description or amount and assign them to a category.
+      They run on import and can be applied retroactively to your full history.
+    </p>
+  </div>
+  <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+    {% if rules %}
+    <form method="POST" style="margin: 0;">
+      <input type="hidden" name="action" value="apply_all">
+      <button type="submit" class="lr-btn lr-btn-secondary">Apply to history</button>
+    </form>
+    {% endif %}
+    <button type="button" class="lr-btn lr-btn-primary" id="show-new-rule">+ New rule</button>
+  </div>
 </div>
 
-<!-- Stats strip -->
-<div class="stats-strip">
-    <div class="stats-strip-item">
-        <div class="stats-strip-label">Active Rules</div>
-        <div class="stats-strip-value">{{ rules | selectattr('enabled') | list | length }}</div>
-    </div>
-    <div class="stats-strip-item">
-        <div class="stats-strip-label">Total Rules</div>
-        <div class="stats-strip-value">{{ rules | length }}</div>
-    </div>
-    <div class="stats-strip-item">
-        <div class="stats-strip-label">Disabled</div>
-        <div class="stats-strip-value" style="color:var(--text-muted)">{{ rules | rejectattr('enabled') | list | length }}</div>
-    </div>
-    <div class="stats-strip-item">
-        <div class="stats-strip-label">Matched (30d)</div>
-        <div class="stats-strip-value">{{ matched_recent }}</div>
-    </div>
-</div>
+<div class="lr-rule-heavy"></div>
 
-<!-- Two-column layout -->
-<div class="rules-layout">
+<section class="rules-layout">
+  <!-- ── LEFT: list ────────────────────────────────────── -->
+  <div>
+    <div class="lr-section-head">
+      <div>
+        <div class="lr-section-kicker">Active rules</div>
+        <h2 class="lr-h2">{{ total_count }} {{ 'rule' if total_count == 1 else 'rules' }}</h2>
+      </div>
+    </div>
 
-    <!-- LEFT: Rules list -->
-    <div class="rules-main">
-
-        <!-- Filter chips -->
-        <div class="filter-chips" id="rule-filter-chips">
-            <button class="filter-chip active" data-filter="all">All ({{ rules|length }})</button>
-            <button class="filter-chip" data-filter="enabled">Enabled ({{ rules | selectattr('enabled') | list | length }})</button>
-            <button class="filter-chip" data-filter="disabled">Disabled ({{ rules | rejectattr('enabled') | list | length }})</button>
-            <button class="filter-chip" data-filter="never">Never matched</button>
-        </div>
-
-        <!-- Apply retroactively -->
-        {% if rules %}
+    {% if rules %}
+    <div class="rules-list">
+      {% for r in rules %}
+      {% set match_str = r.condition_field ~ ' ' ~ r.condition_op ~ ' "' ~ r.condition_value ~ '"' %}
+      {% set mc = match_counts.get(r.id, {}) %}
+      <div class="rules-row {% if not r.enabled %}is-disabled{% endif %}"
+           data-rule-id="{{ r.id }}"
+           data-rule-name="{{ r.name }}"
+           data-rule-field="{{ r.condition_field }}"
+           data-rule-op="{{ r.condition_op }}"
+           data-rule-value="{{ r.condition_value }}"
+           data-rule-category="{{ r.action_category or '' }}"
+           data-rule-rename="{{ r.action_rename or '' }}">
+        <span class="rules-row-num">{{ "%02d"|format(loop.index) }}</span>
         <div>
-            <form method="POST" style="display:inline;">
-                <input type="hidden" name="action" value="apply_all">
-                <button type="submit" class="btn-secondary">Apply All Rules to Existing Transactions</button>
-            </form>
+          <div class="rules-row-name">{{ r.name }}</div>
+          <div class="rules-row-match">{{ match_str }} → {{ r.action_category or 'rename only' }}</div>
         </div>
-        {% endif %}
+        <span class="lr-chip">{{ mc.get('total', 0) }}</span>
+        <form method="POST" style="margin: 0;">
+          <input type="hidden" name="action" value="toggle">
+          <input type="hidden" name="rule_id" value="{{ r.id }}">
+          <button type="submit" class="lr-switch {% if r.enabled %}is-on{% endif %}"
+                  aria-label="Toggle rule"></button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="lr-empty" style="padding: 32px 0; text-align: left;">
+      <p class="lr-lede" style="margin: 0;">
+        No rules yet. Build one on the right and watch the live preview show what it'll do.
+      </p>
+    </div>
+    {% endif %}
 
-        <!-- Rules list -->
-        <div class="section-header">
-            <h2>Your Rules ({{ rules|length }})</h2>
-        </div>
-
-        {% if rules %}
-        <div class="rules-list" style="margin-top:var(--space-xs);">
-            {% for rule in rules %}
-            {% set counts = match_counts.get(rule.id, {'total': 0, 'recent': 0}) %}
-            <div class="rule-card {{ 'rule-disabled' if not rule.enabled }}" data-enabled="{{ 'true' if rule.enabled else 'false' }}" data-matches="{{ counts.total }}">
-                <div class="rule-card-header">
-                    <div>
-                        <div class="rule-name">{{ rule.name }}</div>
-                        <div class="rule-match-meta">{{ counts.total }} match{{ 'es' if counts.total != 1 }} total · {{ counts.recent }} in 30d</div>
-                    </div>
-                    <div class="rule-card-actions">
-                        <form method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="priority">
-                            <input type="hidden" name="rule_id" value="{{ rule.id }}">
-                            <input type="hidden" name="direction" value="up">
-                            <button type="submit" class="btn-icon" title="Move up">↑</button>
-                        </form>
-                        <form method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="priority">
-                            <input type="hidden" name="rule_id" value="{{ rule.id }}">
-                            <input type="hidden" name="direction" value="down">
-                            <button type="submit" class="btn-icon" title="Move down">↓</button>
-                        </form>
-                        <form method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="toggle">
-                            <input type="hidden" name="rule_id" value="{{ rule.id }}">
-                            <button type="submit" class="btn-icon" title="{{ 'Disable' if rule.enabled else 'Enable' }}">
-                                {{ '⏸️' if rule.enabled else '▶️' }}
-                            </button>
-                        </form>
-                        <form method="POST" style="display:inline;">
-                            <input type="hidden" name="action" value="delete">
-                            <input type="hidden" name="rule_id" value="{{ rule.id }}">
-                            <button type="submit" class="btn-icon btn-danger" title="Delete">🗑️</button>
-                        </form>
-                    </div>
-                </div>
-                <div class="rule-logic">
-                    <span class="rule-chip">IF</span>
-                    <span class="rule-chip chip-field">{{ rule.condition_field }}</span>
-                    <span class="rule-chip chip-op">{{ rule.condition_op.replace('_', ' ') }}</span>
-                    <span class="rule-chip chip-value">"{{ rule.condition_value }}"</span>
-                    <span class="rule-chip">→</span>
-                    {% if rule.action_category %}
-                    <span class="rule-chip chip-action">{{ rule.action_category }}</span>
-                    {% endif %}
-                    {% if rule.action_rename %}
-                    <span class="rule-chip chip-rename">rename: {{ rule.action_rename }}</span>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
+    <div class="rules-suggest">
+      <div class="rules-suggest-kicker">From your history</div>
+      <div style="font-size: 13px; color: var(--fg-soft); margin-bottom: 12px;">
+        {% if review_unreviewed > 0 %}
+        {{ review_unreviewed }} transactions still need a category.
         {% else %}
-        <p class="muted" style="font-size:var(--fs-sm);padding:var(--space-sm) 0;">No rules yet — create one using the form on the right, or pick a starter template below.</p>
+        Everything's categorized — nice work.
         {% endif %}
+      </div>
+      <a href="{{ url_for('dashboard') }}" class="lr-btn lr-btn-secondary lr-btn-sm">View activity →</a>
+    </div>
+  </div>
 
-        <!-- Starter templates -->
-        <div class="starter-templates">
-            <h3>Starter Templates</h3>
-            <p class="muted" style="font-size:var(--fs-sm);margin:0;">Click to pre-fill the rule builder →</p>
-            <div class="starter-templates-grid">
-                <button class="starter-template-btn" data-keyword="starbucks" data-cat="Food &amp; Drink">☕ Starbucks → Food</button>
-                <button class="starter-template-btn" data-keyword="uber" data-cat="Transport">🚗 Uber/Lyft → Transport</button>
-                <button class="starter-template-btn" data-keyword="salary" data-cat="Income">💰 Salary → Income</button>
-                <button class="starter-template-btn" data-keyword="amazon" data-cat="Shopping">📦 Amazon → Shopping</button>
-                <button class="starter-template-btn" data-keyword="netflix" data-cat="Entertainment">📺 Netflix → Entertainment</button>
-                <button class="starter-template-btn" data-keyword="rent" data-cat="Housing">🏠 Rent → Housing</button>
-                <button class="starter-template-btn" data-keyword="doordash" data-cat="Food &amp; Drink">🍔 DoorDash → Food</button>
-                <button class="starter-template-btn" data-keyword="spotify" data-cat="Entertainment">🎵 Spotify → Entertainment</button>
-            </div>
-        </div>
-
+  <!-- ── RIGHT: builder + live preview ─────────────────── -->
+  <div class="rules-builder">
+    <div class="lr-section-head">
+      <div>
+        <div class="lr-section-kicker" id="builder-kicker">New rule</div>
+        <h2 class="lr-h2" id="builder-title">Build a rule</h2>
+      </div>
+      <div style="display: flex; gap: 8px;" id="builder-extra">
+        <!-- delete button injected when editing -->
+      </div>
     </div>
 
-    <!-- RIGHT: Rule builder -->
-    <div class="rules-sidebar">
+    <form method="POST" id="rule-form">
+      <input type="hidden" name="action" value="add" id="rule-action">
+      <input type="hidden" name="rule_id" value="" id="rule-id">
 
-        <div class="upload-card">
-            <h2>Create a Rule</h2>
-            <form method="POST" id="rule-form">
-                <input type="hidden" name="action" value="add">
-
-                <div class="form-group">
-                    <label for="name">Rule Name</label>
-                    <input type="text" name="name" id="name" placeholder="e.g., Amazon purchases → Shopping" required>
-                </div>
-
-                <div class="rule-builder">
-                    <div class="rule-condition">
-                        <span class="rule-label">IF</span>
-                        <select name="condition_field" class="search-select" style="min-width:130px;">
-                            <option value="description">Description</option>
-                            <option value="amount">Amount</option>
-                        </select>
-                        <select name="condition_op" class="search-select" style="min-width:130px;">
-                            <option value="contains">contains</option>
-                            <option value="equals">equals</option>
-                            <option value="greater_than">greater than</option>
-                            <option value="less_than">less than</option>
-                        </select>
-                        <input type="text" name="condition_value" id="condition_value" placeholder="e.g., AMAZON" required class="search-input" style="flex:1;">
-                    </div>
-
-                    <div class="rule-actions">
-                        <span class="rule-label">THEN</span>
-                        <div class="form-group" style="margin-bottom:0;flex:1;">
-                            <label>Set category to</label>
-                            <input type="text" name="action_category" id="action_category" placeholder="e.g., Shopping" list="category-list">
-                            <datalist id="category-list">
-                                {% for cat in categories %}
-                                <option value="{{ cat }}">
-                                {% endfor %}
-                            </datalist>
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;flex:1;">
-                            <label>Rename to (optional)</label>
-                            <input type="text" name="action_rename" placeholder="e.g., Amazon">
-                        </div>
-                    </div>
-                </div>
-
-                <div style="display:flex;gap:0.5rem;margin-top:1rem;">
-                    <button type="submit" class="btn-primary">Create Rule</button>
-                </div>
-            </form>
+      <div class="rules-builder-fields">
+        <div>
+          <label class="lr-field-label" for="rule-name">Name</label>
+          <input type="text" name="name" class="lr-input" id="rule-name" placeholder="e.g. Whole Foods → Groceries" required>
         </div>
 
-        <!-- Live preview placeholder -->
-        <div class="live-preview-card" id="rule-live-preview">
-            <p style="font-weight:var(--fw-medium);color:var(--text-secondary);">Live Preview</p>
-            <p>Matching transactions will appear here as you type a keyword.</p>
+        <div>
+          <div class="lr-field-label" id="rule-condition-label">When transaction</div>
+          <div class="rules-builder-cond">
+            <label class="sr-only" for="rule-field">Transaction field</label>
+            <select name="condition_field" class="lr-select" id="rule-field" aria-describedby="rule-condition-label">
+              <option value="description">description</option>
+              <option value="amount">amount</option>
+            </select>
+            <label class="sr-only" for="rule-op">Match operator</label>
+            <select name="condition_op" class="lr-select" id="rule-op" aria-describedby="rule-condition-label">
+              <option value="contains">contains</option>
+              <option value="equals">equals</option>
+              <option value="greater_than">greater than</option>
+              <option value="less_than">less than</option>
+            </select>
+            <label class="sr-only" for="rule-value">Match value</label>
+            <input type="text" name="condition_value" class="lr-input" id="rule-value" placeholder="e.g. whole foods" required>
+          </div>
         </div>
 
-    </div>
-</div>
+        <div>
+          <label class="lr-field-label" for="rule-cat">Then categorize as</label>
+          <input type="text" name="action_category" class="lr-input" id="rule-cat" list="cat-options" placeholder="e.g. Groceries">
+          <datalist id="cat-options">
+            {% for cat in categories %}<option value="{{ cat }}">{% endfor %}
+          </datalist>
+        </div>
+
+        <div>
+          <label class="lr-field-label" for="rule-rename">And rename to (optional)</label>
+          <input type="text" name="action_rename" class="lr-input" id="rule-rename" placeholder="leave blank to keep merchant name">
+        </div>
+      </div>
+
+      <!-- ── Live preview ─────────────────────────────── -->
+      <div class="rules-preview">
+        <div class="rules-preview-head">
+          <span>Live preview · what this rule will do</span>
+          <span><em id="preview-count">type to preview</em></span>
+        </div>
+        <div id="preview-body">
+          <div style="padding: 20px; text-align: center; color: var(--muted); font-family: var(--serif); font-style: italic; font-size: 13px;">
+            Start typing a match value. Matches will appear here.
+          </div>
+        </div>
+      </div>
+
+      <div class="rules-builder-foot">
+        <span style="font-size: 12px; color: var(--muted);">
+          New rules apply to imports going forward. Use "Apply to history" to back-fill.
+        </span>
+        <div style="display: flex; gap: 8px;">
+          <button type="reset" class="lr-btn lr-btn-secondary lr-btn-sm" id="rule-cancel">Reset</button>
+          <button type="submit" class="lr-btn lr-btn-primary lr-btn-sm">Save rule</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-(function() {
-    // Filter chips
-    var chips = document.querySelectorAll('#rule-filter-chips .filter-chip');
-    chips.forEach(function(chip) {
-        chip.addEventListener('click', function() {
-            chips.forEach(function(c) { c.classList.remove('active'); });
-            chip.classList.add('active');
-            var filter = chip.getAttribute('data-filter');
-            document.querySelectorAll('.rule-card').forEach(function(card) {
-                if (filter === 'all') {
-                    card.style.display = '';
-                } else if (filter === 'enabled') {
-                    card.style.display = card.getAttribute('data-enabled') === 'true' ? '' : 'none';
-                } else if (filter === 'disabled') {
-                    card.style.display = card.getAttribute('data-enabled') === 'false' ? '' : 'none';
-                } else {
-                    card.style.display = parseInt(card.getAttribute('data-matches') || '0', 10) === 0 ? '' : 'none';
-                }
-            });
-        });
+(function () {
+  var form = document.getElementById('rule-form');
+  if (!form) return;
+
+  var fld = {
+    action:   form.querySelector('#rule-action'),
+    id:       form.querySelector('#rule-id'),
+    name:     form.querySelector('#rule-name'),
+    field:    form.querySelector('#rule-field'),
+    op:       form.querySelector('#rule-op'),
+    value:    form.querySelector('#rule-value'),
+    cat:      form.querySelector('#rule-cat'),
+    rename:   form.querySelector('#rule-rename')
+  };
+  var kicker = document.getElementById('builder-kicker');
+  var title  = document.getElementById('builder-title');
+  var extra  = document.getElementById('builder-extra');
+
+  // Click a row → load it into the builder.
+  document.querySelectorAll('.rules-row').forEach(function (row) {
+    row.addEventListener('click', function (e) {
+      // Don't hijack clicks on the toggle switch.
+      if (e.target.closest('button') || e.target.closest('form')) return;
+      document.querySelectorAll('.rules-row').forEach(function (r) { r.classList.remove('is-selected'); });
+      row.classList.add('is-selected');
+      fld.action.value  = 'add'; // backend treats "add" as upsert by id when id is present
+      fld.id.value      = row.dataset.ruleId;
+      fld.name.value    = row.dataset.ruleName;
+      fld.field.value   = row.dataset.ruleField;
+      fld.op.value      = row.dataset.ruleOp;
+      fld.value.value   = row.dataset.ruleValue;
+      fld.cat.value     = row.dataset.ruleCategory;
+      fld.rename.value  = row.dataset.ruleRename;
+      kicker.textContent = 'Editing · Rule № ' + row.dataset.ruleId;
+      title.textContent  = row.dataset.ruleName;
+      extra.innerHTML = '<form method="POST" style="margin:0;">'
+        + '<input type="hidden" name="action" value="delete">'
+        + '<input type="hidden" name="rule_id" value="' + row.dataset.ruleId + '">'
+        + '<button type="submit" class="lr-btn lr-btn-secondary lr-btn-sm" '
+        + 'onclick="return confirm(\'Delete this rule?\');" '
+        + 'style="font-size:11px; padding:4px 10px;">delete</button>'
+        + '</form>';
+      requestPreview();
     });
+  });
 
-    // Starter template pre-fill
-    document.querySelectorAll('.starter-template-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var keyword = btn.getAttribute('data-keyword');
-            var cat = btn.getAttribute('data-cat');
-            document.getElementById('name').value = keyword.charAt(0).toUpperCase() + keyword.slice(1) + ' → ' + cat;
-            document.getElementById('condition_value').value = keyword.toUpperCase();
-            document.getElementById('action_category').value = cat;
-            document.getElementById('rule-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            document.getElementById('name').focus();
-            updateLivePreview();
-        });
+  // "+ New rule" → reset to add mode.
+  document.getElementById('show-new-rule').addEventListener('click', function () {
+    document.querySelectorAll('.rules-row').forEach(function (r) { r.classList.remove('is-selected'); });
+    form.reset();
+    fld.action.value = 'add';
+    fld.id.value = '';
+    kicker.textContent = 'New rule';
+    title.textContent  = 'Build a rule';
+    extra.innerHTML = '';
+    document.querySelector('.rules-builder').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    fld.name.focus();
+  });
+
+  // Reset button → clear selection too.
+  document.getElementById('rule-cancel').addEventListener('click', function () {
+    setTimeout(function () {
+      document.querySelectorAll('.rules-row').forEach(function (r) { r.classList.remove('is-selected'); });
+      fld.id.value = '';
+      kicker.textContent = 'New rule';
+      title.textContent  = 'Build a rule';
+      extra.innerHTML = '';
+      renderPreview(null);
+    }, 0);
+  });
+
+  // ── Live preview (debounced, hits /api/rules/preview) ─────────────
+  var debounceTimer = null;
+  function requestPreview() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(doPreview, 300);
+  }
+  ['input', 'change'].forEach(function (ev) {
+    fld.value.addEventListener(ev, requestPreview);
+    fld.field.addEventListener(ev, requestPreview);
+    fld.op.addEventListener(ev, requestPreview);
+    fld.cat.addEventListener(ev, requestPreview);
+  });
+
+  function doPreview() {
+    var v = fld.value.value.trim();
+    if (!v) { renderPreview(null); return; }
+    fetch('/api/rules/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        condition_field: fld.field.value,
+        condition_op:    fld.op.value,
+        condition_value: v
+      })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) { renderPreview(data); })
+    .catch(function () { renderPreview(null); });
+  }
+
+  function renderPreview(data) {
+    var body = document.getElementById('preview-body');
+    var countEl = document.getElementById('preview-count');
+    if (!data) {
+      body.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--muted); font-family: var(--serif); font-style: italic; font-size: 13px;">Start typing a match value. Matches will appear here.</div>';
+      countEl.textContent = 'type to preview';
+      return;
+    }
+    if (!data.count) {
+      body.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--muted); font-family: var(--serif); font-style: italic; font-size: 13px;">No matches yet — try a broader phrase.</div>';
+      countEl.textContent = '0 matches';
+      return;
+    }
+    countEl.textContent = data.count + (data.count === 1 ? ' match' : ' matches');
+    var newCat = fld.cat.value.trim();
+    var rows = data.matches.map(function (m) {
+      var amt = (m.amount > 0 ? '+' : '−') + '$' + Math.abs(m.amount).toFixed(2);
+      var same = newCat && m.category === newCat;
+      return '<div class="rules-preview-row">'
+        + '<div>'
+        +   '<div class="rules-preview-merchant">' + escapeHtml(m.description) + '</div>'
+        +   '<div class="rules-preview-meta">' + escapeHtml(m.date) + ' · was ' + escapeHtml(m.category || 'Uncategorized') + '</div>'
+        + '</div>'
+        + '<span class="rules-preview-amt tabular">' + amt + '</span>'
+        + (newCat
+            ? '<div class="rules-preview-tag" style="' + (same ? 'color: var(--muted);' : '') + '">'
+              + '<span class="dot" style="' + (same ? 'background: var(--muted);' : '') + '"></span>'
+              + (same ? '<em class="lr-em lr-em-muted">already matches</em>' : '<em class="lr-em">→ ' + escapeHtml(newCat) + '</em>')
+              + '</div>'
+            : '<span></span>')
+        + '</div>';
+    }).join('');
+    body.innerHTML = rows;
+  }
+
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
     });
-
-    var form = document.getElementById('rule-form');
-    var preview = document.getElementById('rule-live-preview');
-    var timer = null;
-
-    function money(amount) {
-        var sign = amount >= 0 ? '+' : '-';
-        return sign + '$' + Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    function renderPreview(data) {
-        if (!preview) return;
-        if (!data.matches || !data.matches.length) {
-            preview.innerHTML = '<p style="font-weight:var(--fw-medium);color:var(--text-secondary);">Live Preview</p><p>No current transactions match this rule yet.</p>';
-            return;
-        }
-
-        var html = '<div class="live-preview-head"><span>Live Preview</span><span class="rule-chip chip-action">' + data.count + ' shown</span></div>';
-        html += '<div class="live-preview-list">';
-        data.matches.forEach(function(t) {
-            html += '<div class="live-preview-row">' +
-                '<div><strong>' + t.description + '</strong><span>' + t.date + ' · ' + (t.category || 'Uncategorized') + '</span></div>' +
-                '<b class="' + (t.amount >= 0 ? 'income' : 'spent') + '">' + money(t.amount) + '</b>' +
-                '</div>';
-        });
-        html += '</div>';
-        preview.innerHTML = html;
-    }
-
-    function updateLivePreview() {
-        if (!form) return;
-        var value = form.elements.condition_value.value.trim();
-        if (!value) {
-            preview.innerHTML = '<p style="font-weight:var(--fw-medium);color:var(--text-secondary);">Live Preview</p><p>Matching transactions will appear here as you type a keyword.</p>';
-            return;
-        }
-        fetch('/api/rules/preview', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                condition_field: form.elements.condition_field.value,
-                condition_op: form.elements.condition_op.value,
-                condition_value: value
-            })
-        }).then(function(r) { return r.json(); }).then(renderPreview);
-    }
-
-    if (form) {
-        ['condition_field', 'condition_op', 'condition_value'].forEach(function(name) {
-            form.elements[name].addEventListener('input', function() {
-                clearTimeout(timer);
-                timer = setTimeout(updateLivePreview, 180);
-            });
-            form.elements[name].addEventListener('change', updateLivePreview);
-        });
-    }
+  }
 })();
 </script>
 {% endblock %}
