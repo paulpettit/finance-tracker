@@ -2,7 +2,7 @@
 
 A local-first Flask app for importing bank CSVs, reviewing transactions, creating categorization rules, and tracking monthly budgets.
 
-![Finance Tracker Demo](docs/finance-tracker-demo-2026.gif)
+![Finance Tracker Demo](docs/finance-tracker-demo-2026-04-26.gif)
 
 ## Highlights
 
